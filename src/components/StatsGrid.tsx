@@ -119,9 +119,9 @@ export function StatsGrid({
       >
         <div className="flex justify-between items-start">
           <div>
-            <span className="text-[11px] font-extrabold uppercase tracking-wider text-slate-400">Net Stock Valuation</span>
+            <span className="text-[11px] font-extrabold uppercase tracking-wider text-slate-400">Net Stock Valuation (SAR)</span>
             <h3 className="text-2xl font-black font-sans text-white mt-1.5 neon-text-orange">
-              ₹ {totalStockValue.toLocaleString('en-IN')}
+              SAR {totalStockValue.toLocaleString('en-US')}
             </h3>
           </div>
           <div className="p-3 bg-amber-500/10 text-amber-400 rounded-xl border border-amber-500/25 glow-orange">

@@ -6,7 +6,9 @@ import {
   setDoc, 
   deleteDoc, 
   writeBatch,
-  getDocs
+  getDocs,
+  query,
+  where
 } from 'firebase/firestore';
 import { getAuth } from 'firebase/auth';
 import { InventoryItem, IssueTransaction, ReceiveTransaction } from './types';
@@ -160,4 +162,37 @@ export async function resetDatabaseToDefaults() {
 
   // Seed default data
   await seedDatabaseIfEmpty();
+}
+
+export const warehousesColRef = collection(db, "warehouses");
+export const departmentsColRef = collection(db, "departments");
+
+export async function saveCustomWarehouse(id: string, name: string) {
+  const docRef = doc(db, "warehouses", id);
+  await setDoc(docRef, { id, name, createdAt: new Date().toISOString() });
+}
+
+export async function saveCustomDepartment(id: string, name: string) {
+  const docRef = doc(db, "departments", id);
+  await setDoc(docRef, { id, name, createdAt: new Date().toISOString() });
+}
+
+export async function deleteCustomWarehouse(name: string) {
+  const q = query(warehousesColRef, where("name", "==", name));
+  const snap = await getDocs(q);
+  const batch = writeBatch(db);
+  snap.forEach((doc) => {
+    batch.delete(doc.ref);
+  });
+  await batch.commit();
+}
+
+export async function deleteCustomDepartment(name: string) {
+  const q = query(departmentsColRef, where("name", "==", name));
+  const snap = await getDocs(q);
+  const batch = writeBatch(db);
+  snap.forEach((doc) => {
+    batch.delete(doc.ref);
+  });
+  await batch.commit();
 }

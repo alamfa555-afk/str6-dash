@@ -204,7 +204,7 @@ export function generateInventoryPDF({
     head: [['Stats Metric', 'Value', 'Description']],
     body: [
       ['Total Items Listed', String(totalUniqueItems), 'Registered items matching chosen filters'],
-      ['Total Stock Valuation (INR)', `Rs. ${totalCurrentVal.toLocaleString('en-IN')}`, 'Net worth of stock held in store'],
+      ['Total Stock Valuation (SAR)', `SAR ${totalCurrentVal.toLocaleString('en-US')}`, 'Net worth of stock held in store'],
       ['Low Stock Items Count (<=10)', String(lowStockAlertCount), 'Items demanding reorder/purchase refills'],
       [`Total Released Quantity (${reportType})`, String(totalIssuedQtyInPeriod), `Sum of units issued during this ${reportType} period`]
     ],
@@ -256,12 +256,12 @@ export function generateInventoryPDF({
       item.itemCode,
       `${item.description} (${item.department || 'Civil'})`,
       item.unit,
-      `Rs. ${item.pricePerUnit}`,
+      `SAR ${item.pricePerUnit}`,
       String(item.initialQty),
       `+${itemReceived} (${periodReceived} in period)`,
       `-${itemIssued} (${periodIssued} in period)`,
       String(currentStock),
-      `Rs. ${stockVal.toLocaleString('en-IN')}`,
+      `SAR ${stockVal.toLocaleString('en-US')}`,
       statusText
     ];
   });
@@ -332,7 +332,11 @@ export function generateInventoryPDF({
       `${is.quantity} ${matchedItem ? matchedItem.unit : ''}`,
       dateFormatted,
       `${is.issuedByName} (${is.issuedById})`,
-      is.remark || '-'
+      [
+        is.remark,
+        is.withdrawReceiptNo ? `WR-No: ${is.withdrawReceiptNo}` : null,
+        is.mdrNo ? `MDR-No: ${is.mdrNo}` : null
+      ].filter(Boolean).join(' | ') || '-'
     ];
   });
 

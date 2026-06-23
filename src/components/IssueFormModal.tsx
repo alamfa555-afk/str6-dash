@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { InventoryItem, IssueTransaction, ReceiveTransaction } from '../types';
-import { X, ArrowDownRight, Info, AlertTriangle, CheckCircle } from 'lucide-react';
+import { X, ArrowDownRight, Info, AlertTriangle, CheckCircle, Plus } from 'lucide-react';
 
 interface IssueModalProps {
   isOpen: boolean;
@@ -8,9 +8,23 @@ interface IssueModalProps {
   onIssue: (transaction: Omit<IssueTransaction, 'id'>) => void;
   items: InventoryItem[];
   getCurrentStock: (itemCode: string, warehouseFilter?: string) => number;
+  warehouses: string[];
+  departments: string[];
+  onAddWarehouse?: (name: string) => Promise<void>;
+  onAddDepartment?: (name: string) => Promise<void>;
 }
 
-export function IssueFormModal({ isOpen, onClose, onIssue, items, getCurrentStock }: IssueModalProps) {
+export function IssueFormModal({ 
+  isOpen, 
+  onClose, 
+  onIssue, 
+  items, 
+  getCurrentStock,
+  warehouses,
+  departments,
+  onAddWarehouse,
+  onAddDepartment
+}: IssueModalProps) {
   // Fields
   const [selectedItemCode, setSelectedItemCode] = useState('');
   const [warehouse, setWarehouse] = useState('Main Warehouse');
@@ -21,6 +35,16 @@ export function IssueFormModal({ isOpen, onClose, onIssue, items, getCurrentStoc
   const [issuedById, setIssuedById] = useState('');
   const [department, setDepartment] = useState('Civil');
   const [remark, setRemark] = useState('');
+  
+  // Custom tracking for newly added issue fields
+  const [withdrawReceiptNo, setWithdrawReceiptNo] = useState('');
+  const [mdrNo, setMdrNo] = useState('');
+
+  // Inline additions
+  const [showAddWarehouseForm, setShowAddWarehouseForm] = useState(false);
+  const [newWarehouseName, setNewWarehouseName] = useState('');
+  const [showAddDeptForm, setShowAddDeptForm] = useState(false);
+  const [newDeptName, setNewDeptName] = useState('');
 
   // Status controls
   const [errorMsg, setErrorMsg] = useState('');
@@ -55,6 +79,13 @@ export function IssueFormModal({ isOpen, onClose, onIssue, items, getCurrentStoc
       setRemark('');
       setErrorMsg('');
       setLowStockWarning(false);
+      
+      setWithdrawReceiptNo('');
+      setMdrNo('');
+      setShowAddWarehouseForm(false);
+      setNewWarehouseName('');
+      setShowAddDeptForm(false);
+      setNewDeptName('');
     }
   }, [isOpen, items]);
 
@@ -138,7 +169,9 @@ export function IssueFormModal({ isOpen, onClose, onIssue, items, getCurrentStoc
       issuedByName: issuedByName.trim(),
       issuedById: issuedById.trim(),
       remark: remark.trim() || undefined,
-      warehouse
+      warehouse,
+      withdrawReceiptNo: withdrawReceiptNo.trim() || undefined,
+      mdrNo: mdrNo.trim() || undefined,
     });
 
     // Save issuer details locally for user convenience on next transaction
@@ -185,26 +218,68 @@ export function IssueFormModal({ isOpen, onClose, onIssue, items, getCurrentStoc
 
           {/* Select Warehouse */}
           <div>
-            <label className="block text-xs font-bold text-slate-400 uppercase mb-1">Select Warehouse Location *</label>
-            <select
-              value={warehouse}
-              onChange={(e) => {
-                setWarehouse(e.target.value);
-                setQuantity(0);
-              }}
-              className="w-full text-sm border border-slate-800 rounded-lg px-3 py-2.5 bg-slate-950 font-extrabold text-amber-400 outline-none focus:ring-2 focus:ring-red-500/20 focus:border-red-500"
-            >
-              {['Main Warehouse', 'Shed A Warehouse', 'Sub-Depot Warehouse'].map((wh) => (
-                <option 
-                  key={wh} 
-                  value={wh} 
-                  className="bg-slate-950 text-slate-100 font-semibold"
-                  style={{ color: '#fbbf24', backgroundColor: '#090d16' }}
+            <div className="flex justify-between items-center mb-1">
+              <label className="block text-xs font-bold text-slate-400 uppercase">Select Warehouse Location *</label>
+              {onAddWarehouse && (
+                <button
+                  type="button"
+                  onClick={() => setShowAddWarehouseForm(!showAddWarehouseForm)}
+                  className="text-[10px] text-emerald-400 hover:text-emerald-350 font-extrabold flex items-center gap-0.5 focus:outline-none"
                 >
-                  🏬 {wh}
-                </option>
-              ))}
-            </select>
+                  <Plus size={10} strokeWidth={3} /> {showAddWarehouseForm ? "Cancel" : "Add New"}
+                </button>
+              )}
+            </div>
+
+            {showAddWarehouseForm ? (
+              <div className="flex gap-1.5 animate-in fade-in duration-200">
+                <input
+                  type="text"
+                  value={newWarehouseName}
+                  onChange={(e) => setNewWarehouseName(e.target.value)}
+                  placeholder="e.g. Yard C Warehouse"
+                  className="flex-1 text-xs border border-slate-800 rounded-lg px-2.5 py-2.5 outline-none bg-slate-950 text-slate-105 font-semibold"
+                />
+                <button
+                  type="button"
+                  onClick={async () => {
+                    if (newWarehouseName.trim() && onAddWarehouse) {
+                      try {
+                        await onAddWarehouse(newWarehouseName.trim());
+                        setWarehouse(newWarehouseName.trim());
+                        setNewWarehouseName('');
+                        setShowAddWarehouseForm(false);
+                      } catch (err) {
+                        console.error("Failed to add warehouse:", err);
+                      }
+                    }
+                  }}
+                  className="px-3 py-2 bg-emerald-650 hover:bg-emerald-550 text-white font-bold text-xs rounded-lg transition-all"
+                >
+                  Save
+                </button>
+              </div>
+            ) : (
+              <select
+                value={warehouse}
+                onChange={(e) => {
+                  setWarehouse(e.target.value);
+                  setQuantity(0);
+                }}
+                className="w-full text-sm border border-slate-800 rounded-lg px-3 py-2.5 bg-slate-950 font-extrabold text-amber-400 outline-none focus:ring-2 focus:ring-red-500/20 focus:border-red-500"
+              >
+                {warehouses.map((wh) => (
+                  <option 
+                    key={wh} 
+                    value={wh} 
+                    className="bg-slate-950 text-slate-101 font-semibold"
+                    style={{ color: '#fbbf24', backgroundColor: '#090d16' }}
+                  >
+                    🏬 {wh}
+                  </option>
+                ))}
+              </select>
+            )}
           </div>
 
           {/* Select Item */}
@@ -293,23 +368,95 @@ export function IssueFormModal({ isOpen, onClose, onIssue, items, getCurrentStoc
             </div>
 
             <div>
-              <label className="block text-xs font-bold text-slate-400 uppercase mb-1">Requesting Department *</label>
-              <select
-                value={department}
-                onChange={(e) => setDepartment(e.target.value)}
-                className="w-full text-sm border border-slate-800 rounded-lg px-3 py-2 focus:ring-2 focus:ring-red-500/20 focus:border-red-500 outline-none bg-slate-950 font-bold text-slate-200"
-              >
-                {['Civil', 'Electrical', 'Plumbing', 'Safety', 'Machinery', 'Tools', 'Other'].map((d) => (
-                  <option 
-                    key={d} 
-                    value={d} 
-                    className="bg-slate-950 text-slate-200 font-semibold"
-                    style={{ color: '#f8fafc', backgroundColor: '#090d16' }}
+              <div className="flex justify-between items-center mb-1">
+                <label className="block text-xs font-bold text-slate-400 uppercase">Requesting Department *</label>
+                {onAddDepartment && (
+                  <button
+                    type="button"
+                    onClick={() => setShowAddDeptForm(!showAddDeptForm)}
+                    className="text-[10px] text-emerald-400 hover:text-emerald-350 font-extrabold flex items-center gap-0.5 focus:outline-none"
                   >
-                    🛠️ {d} Department
-                  </option>
-                ))}
-              </select>
+                    <Plus size={10} strokeWidth={3} /> {showAddDeptForm ? "Cancel" : "Add New"}
+                  </button>
+                )}
+              </div>
+
+              {showAddDeptForm ? (
+                <div className="flex gap-1.5 animate-in fade-in duration-200">
+                  <input
+                    type="text"
+                    value={newDeptName}
+                    onChange={(e) => setNewDeptName(e.target.value)}
+                    placeholder="e.g. Mechanical"
+                    className="flex-1 text-xs border border-slate-800 rounded-lg px-2.5 py-2.5 outline-none bg-slate-950 text-slate-100 font-semibold"
+                  />
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      if (newDeptName.trim() && onAddDepartment) {
+                        try {
+                          await onAddDepartment(newDeptName.trim());
+                          setDepartment(newDeptName.trim());
+                          setNewDeptName('');
+                          setShowAddDeptForm(false);
+                        } catch (err) {
+                          console.error("Failed to add department:", err);
+                        }
+                      }
+                    }}
+                    className="px-3 py-2 bg-emerald-650 hover:bg-emerald-550 text-white font-bold text-xs rounded-lg transition-all"
+                  >
+                    Save
+                  </button>
+                </div>
+              ) : (
+                <select
+                  value={department}
+                  onChange={(e) => setDepartment(e.target.value)}
+                  className="w-full text-sm border border-slate-800 rounded-lg px-3 py-2.5 bg-slate-950 font-bold text-slate-205 focus:ring-2 focus:ring-red-500/20 focus:border-red-500 outline-none animate-in fade-in duration-200"
+                >
+                  {departments.map((d) => (
+                    <option 
+                      key={d} 
+                      value={d} 
+                      className="bg-slate-950 text-slate-201 font-semibold"
+                      style={{ color: '#f8fafc', backgroundColor: '#090d16' }}
+                    >
+                      🛠️ {d} Department
+                    </option>
+                  ))}
+                </select>
+              )}
+            </div>
+          </div>
+
+          {/* Reference Document Identifiers */}
+          <div className="bg-slate-950/30 p-4 rounded-xl space-y-3 border border-white/5 text-xs text-slate-300">
+            <h4 className="font-bold text-slate-200 flex items-center gap-1">
+              <span>📋 Transmittal Reference Numbers</span>
+            </h4>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-[10px] uppercase font-semibold text-slate-400 mb-1">Withdraw Receipt No.</label>
+                <input 
+                  type="text" 
+                  value={withdrawReceiptNo}
+                  onChange={(e) => setWithdrawReceiptNo(e.target.value)}
+                  className="w-full text-sm border border-slate-800 bg-slate-950 text-slate-200 font-semibold rounded-lg px-3 py-1.5 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 outline-none"
+                  placeholder="e.g. WR-8891"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[10px] uppercase font-semibold text-slate-400 mb-1">MDR No. (Materials Delivery Report)</label>
+                <input 
+                  type="text" 
+                  value={mdrNo}
+                  onChange={(e) => setMdrNo(e.target.value)}
+                  className="w-full text-sm border border-slate-800 bg-slate-950 text-slate-200 font-semibold rounded-lg px-3 py-1.5 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 outline-none font-mono"
+                  placeholder="e.g. MDR-4022"
+                />
+              </div>
             </div>
           </div>
 

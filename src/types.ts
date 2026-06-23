@@ -28,6 +28,8 @@ export interface IssueTransaction {
   issuedById: string; // Employee ID of person issuing the stock
   remark?: string;
   warehouse?: string; // Multi-warehouse location
+  withdrawReceiptNo?: string;
+  mdrNo?: string;
 }
 
 export interface ReceiveTransaction {

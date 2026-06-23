@@ -8,11 +8,21 @@ interface ItemFormProps {
   onSave: (item: Omit<InventoryItem, 'id' | 'createdAt'> & { id?: string }) => void;
   existingItem?: InventoryItem;
   allItems: InventoryItem[];
+  departments: string[];
+  onAddDepartment?: (name: string) => Promise<void>;
 }
 
 const UNITS: UnitType[] = ['kg', 'pcs', 'box', 'ltr', 'mtr', 'roll', 'sheet', 'ho'];
 
-export function ItemFormModal({ isOpen, onClose, onSave, existingItem, allItems }: ItemFormProps) {
+export function ItemFormModal({ 
+  isOpen, 
+  onClose, 
+  onSave, 
+  existingItem, 
+  allItems,
+  departments,
+  onAddDepartment
+}: ItemFormProps) {
   const [itemCode, setItemCode] = useState('');
   const [description, setDescription] = useState('');
   const [unit, setUnit] = useState<UnitType>('pcs');
@@ -20,6 +30,10 @@ export function ItemFormModal({ isOpen, onClose, onSave, existingItem, allItems 
   const [price, setPrice] = useState<number>(0);
   const [department, setDepartment] = useState('Civil');
   const [remark, setRemark] = useState('');
+  
+  // Custom tracking for adding department dynamically inside the form
+  const [showAddDeptForm, setShowAddDeptForm] = useState(false);
+  const [newDeptName, setNewDeptName] = useState('');
   
   // Custom tracking for damage, reject, expired
   const [damagedQty, setDamagedQty] = useState<number>(0);
@@ -256,27 +270,69 @@ export function ItemFormModal({ isOpen, onClose, onSave, existingItem, allItems 
 
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-xs font-bold text-slate-600 uppercase mb-1">Primary Department *</label>
-              <select
-                value={department}
-                onChange={(e) => setDepartment(e.target.value)}
-                className="w-full text-sm border border-slate-200 rounded-lg px-3 py-2.5 focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none bg-white text-slate-950 font-bold"
-              >
-                {['Civil', 'Electrical', 'Plumbing', 'Safety', 'Machinery', 'Tools', 'Other'].map((dept) => (
-                  <option 
-                    key={dept} 
-                    value={dept} 
-                    className="bg-white text-slate-950 font-semibold"
-                    style={{ color: '#0f172a', backgroundColor: '#ffffff' }}
+              <div className="flex justify-between items-center mb-1">
+                <label className="block text-xs font-bold text-slate-600 uppercase">Primary Department *</label>
+                {onAddDepartment && (
+                  <button
+                    type="button"
+                    onClick={() => setShowAddDeptForm(!showAddDeptForm)}
+                    className="text-[10px] text-emerald-600 hover:text-emerald-700 font-extrabold flex items-center gap-0.5 focus:outline-none"
                   >
-                    🛠️ {dept} Department
-                  </option>
-                ))}
-              </select>
+                    <Plus size={10} strokeWidth={3} /> {showAddDeptForm ? "Cancel" : "Add New"}
+                  </button>
+                )}
+              </div>
+
+              {showAddDeptForm ? (
+                <div className="flex gap-1.5 animate-in fade-in duration-200">
+                  <input
+                    type="text"
+                    value={newDeptName}
+                    onChange={(e) => setNewDeptName(e.target.value)}
+                    placeholder="e.g. Mechanical"
+                    className="flex-1 text-xs border border-slate-200 rounded-lg px-2.5 py-2 focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none bg-white text-slate-950 font-semibold"
+                  />
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      if (newDeptName.trim() && onAddDepartment) {
+                        try {
+                          await onAddDepartment(newDeptName.trim());
+                          setDepartment(newDeptName.trim());
+                          setNewDeptName('');
+                          setShowAddDeptForm(false);
+                        } catch (err) {
+                          console.error("Failed to add department:", err);
+                        }
+                      }
+                    }}
+                    className="px-3 py-2 bg-emerald-500 hover:bg-emerald-600 text-white font-bold text-xs rounded-lg transition-all"
+                  >
+                    Save
+                  </button>
+                </div>
+              ) : (
+                <select
+                  value={department}
+                  onChange={(e) => setDepartment(e.target.value)}
+                  className="w-full text-sm border border-slate-200 rounded-lg px-3 py-2.5 focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none bg-white text-slate-950 font-bold"
+                >
+                  {departments.map((dept) => (
+                    <option 
+                      key={dept} 
+                      value={dept} 
+                      className="bg-white text-slate-950 font-semibold"
+                      style={{ color: '#0f172a', backgroundColor: '#ffffff' }}
+                    >
+                      🛠️ {dept} Department
+                    </option>
+                  ))}
+                </select>
+              )}
             </div>
 
             <div>
-              <label className="block text-xs font-bold text-slate-600 uppercase mb-1">Price per unit (INR ₹) *</label>
+              <label className="block text-xs font-bold text-slate-600 uppercase mb-1">Price per unit (SAR) *</label>
               <input 
                 type="number" 
                 min="0"

@@ -18,7 +18,9 @@ import {
   LogOut,
   User as UserIcon,
   Download,
-  Warehouse
+  Warehouse,
+  ChevronDown,
+  ChevronUp
 } from 'lucide-react';
 import { onSnapshot } from 'firebase/firestore';
 import { onAuthStateChanged, signOut, User as FirebaseUser } from 'firebase/auth';
@@ -26,6 +28,8 @@ import {
   itemsColRef, 
   issuesColRef, 
   receivesColRef,
+  warehousesColRef,
+  departmentsColRef,
   seedDatabaseIfEmpty,
   saveInventoryItem,
   deleteInventoryItem,
@@ -33,6 +37,10 @@ import {
   deleteIssueTransaction,
   saveReceiveTransaction,
   deleteReceiveTransaction,
+  saveCustomWarehouse,
+  saveCustomDepartment,
+  deleteCustomWarehouse,
+  deleteCustomDepartment,
   resetDatabaseToDefaults,
   auth
 } from './firebase';
@@ -55,6 +63,20 @@ export default function App() {
   const [items, setItems] = useState<InventoryItem[]>([]);
   const [issues, setIssues] = useState<IssueTransaction[]>([]);
   const [receives, setReceives] = useState<ReceiveTransaction[]>([]);
+  const [warehouses, setWarehouses] = useState<string[]>([
+    'Main Warehouse', 
+    'Shed A Warehouse', 
+    'Sub-Depot Warehouse'
+  ]);
+  const [departments, setDepartments] = useState<string[]>([
+    'Civil', 
+    'Electrical', 
+    'Plumbing', 
+    'Safety', 
+    'Machinery', 
+    'Tools', 
+    'Other'
+  ]);
 
   // Auth observer
   useEffect(() => {
@@ -91,7 +113,7 @@ export default function App() {
 
   // --- Active Selected Edit States ---
   const [editingItem, setEditingItem] = useState<InventoryItem | undefined>(undefined);
-  const [activeTab, setActiveTab] = useState<'inventory' | 'issues' | 'receives'>('inventory');
+  const [activeTab, setActiveTab] = useState<'inventory' | 'issues' | 'receives' | 'settings'>('inventory');
 
   // --- Search & Filters ---
   const [searchTerm, setSearchTerm] = useState('');
@@ -102,6 +124,7 @@ export default function App() {
 
   // --- Custom Global notification banners (e.g., critical low stock triggers) ---
   const [showLowStockNotification, setShowLowStockNotification] = useState(true);
+  const [showAnalytics, setShowAnalytics] = useState(false);
 
   // --- Loading State for initial fetch ---
   const [isLoading, setIsLoading] = useState(true);
@@ -111,11 +134,16 @@ export default function App() {
     let unsubscribeItems: () => void;
     let unsubscribeIssues: () => void;
     let unsubscribeReceives: () => void;
+    let unsubscribeWarehouses: () => void;
+    let unsubscribeDepartments: () => void;
 
     const setupRealtimeSync = async () => {
       try {
         // Seed first if database has no entries
         await seedDatabaseIfEmpty();
+
+        const defaultsWh = ['Main Warehouse', 'Shed A Warehouse', 'Sub-Depot Warehouse'];
+        const defaultsDept = ['Civil', 'Electrical', 'Plumbing', 'Safety', 'Machinery', 'Tools', 'Other'];
 
         // Listen to inv_items
         unsubscribeItems = onSnapshot(itemsColRef, (snapshot) => {
@@ -155,6 +183,37 @@ export default function App() {
           console.error("Firebase Receives Sync Error:", error);
           setIsLoading(false);
         });
+
+        // Listen to warehouses list
+        unsubscribeWarehouses = onSnapshot(warehousesColRef, (snapshot) => {
+          const list: string[] = [];
+          snapshot.forEach((doc) => {
+            const data = doc.data();
+            if (data && data.name) {
+              list.push(data.name);
+            }
+          });
+          const merged = Array.from(new Set([...defaultsWh, ...list]));
+          setWarehouses(merged);
+        }, (error) => {
+          console.error("Firebase Warehouses Sync Error:", error);
+        });
+
+        // Listen to departments list
+        unsubscribeDepartments = onSnapshot(departmentsColRef, (snapshot) => {
+          const list: string[] = [];
+          snapshot.forEach((doc) => {
+            const data = doc.data();
+            if (data && data.name) {
+              list.push(data.name);
+            }
+          });
+          const merged = Array.from(new Set([...defaultsDept, ...list]));
+          setDepartments(merged);
+        }, (error) => {
+          console.error("Firebase Departments Sync Error:", error);
+        });
+
       } catch (err) {
         console.error("Firebase Initialization Error:", err);
         setIsLoading(false);
@@ -167,8 +226,55 @@ export default function App() {
       if (unsubscribeItems) unsubscribeItems();
       if (unsubscribeIssues) unsubscribeIssues();
       if (unsubscribeReceives) unsubscribeReceives();
+      if (unsubscribeWarehouses) unsubscribeWarehouses();
+      if (unsubscribeDepartments) unsubscribeDepartments();
     };
   }, []);
+
+  const [settingsNewWh, setSettingsNewWh] = useState('');
+  const [settingsNewDept, setSettingsNewDept] = useState('');
+
+  const handleAddWarehouse = async (name: string) => {
+    const id = `wh_${Date.now()}`;
+    await saveCustomWarehouse(id, name);
+  };
+
+  const handleAddDepartment = async (name: string) => {
+    const id = `dept_${Date.now()}`;
+    await saveCustomDepartment(id, name);
+  };
+
+  const handleDeleteWarehouse = async (name: string) => {
+    const defaults = ['Main Warehouse', 'Shed A Warehouse', 'Sub-Depot Warehouse'];
+    if (defaults.includes(name)) {
+      window.alert("Cannot delete default system warehouse locations.");
+      return;
+    }
+    const confirmDelete = window.confirm(`Are you sure you want to delete warehouse option: "${name}"?`);
+    if (confirmDelete) {
+      try {
+        await deleteCustomWarehouse(name);
+      } catch (err) {
+        console.error("Error deleting warehouse:", err);
+      }
+    }
+  };
+
+  const handleDeleteDepartment = async (name: string) => {
+    const defaults = ['Civil', 'Electrical', 'Plumbing', 'Safety', 'Machinery', 'Tools', 'Other'];
+    if (defaults.includes(name)) {
+      window.alert("Cannot delete default system departments.");
+      return;
+    }
+    const confirmDelete = window.confirm(`Are you sure you want to delete department option: "${name}"?`);
+    if (confirmDelete) {
+      try {
+        await deleteCustomDepartment(name);
+      } catch (err) {
+        console.error("Error deleting department:", err);
+      }
+    }
+  };
 
   // 2. Automated Quantity Stock Balance calculation for relative items
   // Real-time Current Stock = Initial Opening Qty + Sum(Receives) - Sum(Issues) - Damaged - Rejected - Expired (by Warehouse if specified)
@@ -366,7 +472,7 @@ export default function App() {
     if (activeTab === 'inventory') {
       fileName = `Inventory_Report_${selectedWarehouseFilter === 'all' ? 'All_Warehouses' : selectedWarehouseFilter}_${new Date().toISOString().slice(0, 10)}.csv`;
       
-      const headers = ["Serial No", "Item Code", "Description", "Department", "Unit Category", "Price Per Unit (INR)", "Current In-Stock Quantity", "Estimated Valuation (INR)", "Damaged", "Rejected", "Expired", "Primary Supplier"];
+      const headers = ["Serial No", "Item Code", "Description", "Department", "Unit Category", "Price Per Unit (SAR)", "Current In-Stock Quantity", "Estimated Valuation (SAR)", "Damaged", "Rejected", "Expired", "Primary Supplier"];
       csvContent += headers.map(h => `"${h}"`).join(",") + "\n";
 
       filteredItemsList.forEach((item, index) => {
@@ -390,7 +496,7 @@ export default function App() {
       });
     } else if (activeTab === 'issues') {
       fileName = `Stock_Issues_Report_${selectedWarehouseFilter === 'all' ? 'All_Warehouses' : selectedWarehouseFilter}_${new Date().toISOString().slice(0, 10)}.csv`;
-      const headers = ["Serial No", "Item Code", "Item Description", "Receiver / Issued To", "Requesting Department", "Quantity Released", "Date & Time", "Released By Name", "Released By ID", "Warehouse Location", "Purpose / Remark"];
+      const headers = ["Serial No", "Item Code", "Item Description", "Receiver / Issued To", "Requesting Department", "Quantity Released", "Date & Time", "Released By Name", "Released By ID", "Warehouse Location", "Purpose / Remark", "Withdraw Receipt No", "MDR No"];
       csvContent += headers.map(h => `"${h}"`).join(",") + "\n";
 
       const filteredIssues = issues.filter(is => {
@@ -410,17 +516,19 @@ export default function App() {
           is.issuedTo,
           is.department || 'Civil',
           is.quantity,
-          new Date(is.issuedAt).toLocaleString('en-IN'),
+          new Date(is.issuedAt).toLocaleString('en-US'),
           is.issuedByName,
           is.issuedById,
           is.warehouse || 'Main Warehouse',
-          is.remark || 'N/A'
+          is.remark || 'N/A',
+          is.withdrawReceiptNo || '',
+          is.mdrNo || ''
         ];
         csvContent += row.map(v => `"${String(v).replace(/"/g, '""')}"`).join(",") + "\n";
       });
     } else if (activeTab === 'receives') {
       fileName = `Stock_Receives_Report_${selectedWarehouseFilter === 'all' ? 'All_Warehouses' : selectedWarehouseFilter}_${new Date().toISOString().slice(0, 10)}.csv`;
-      const headers = ["Serial No", "Item Code", "Item Description", "Refill Quantity", "Supplier / Vendor Name", "Price Per Unit (INR)", "Received Date & Time", "Received By Name", "Received By ID", "Warehouse Location", "Invoice / Remark"];
+      const headers = ["Serial No", "Item Code", "Item Description", "Refill Quantity", "Supplier / Vendor Name", "Price Per Unit (SAR)", "Received Date & Time", "Received By Name", "Received By ID", "Warehouse Location", "Invoice / Remark"];
       csvContent += headers.map(h => `"${h}"`).join(",") + "\n";
 
       const filteredReceives = receives.filter(rc => {
@@ -442,7 +550,7 @@ export default function App() {
           rc.quantity,
           rc.supplierName || matchedItem?.supplierName || 'Default Vendor',
           rc.pricePerUnit || matchedItem?.pricePerUnit || 0,
-          new Date(rc.receivedAt).toLocaleString('en-IN'),
+          new Date(rc.receivedAt).toLocaleString('en-US'),
           rc.receivedByName,
           rc.receivedById,
           rc.warehouse || 'Main Warehouse',
@@ -695,61 +803,121 @@ export default function App() {
           </div>
         )}
 
-        {/* 3. Dashboard Stats Section */}
-        <StatsGrid 
-          items={items} 
-          issues={issues} 
-          receives={receives} 
-          selectedWarehouseFilter={selectedWarehouseFilter}
-          onLowStockClick={() => {
-            setActiveTab('inventory');
-            setFilterStockStatus('low');
-            setTimeout(() => {
-              const sec = document.getElementById('inventory-table-section');
-              if (sec) sec.scrollIntoView({ behavior: 'smooth' });
-            }, 100);
-          }}
-          onOutOfStockClick={() => {
-            setActiveTab('inventory');
-            setFilterStockStatus('out');
-            setTimeout(() => {
-              const sec = document.getElementById('inventory-table-section');
-              if (sec) sec.scrollIntoView({ behavior: 'smooth' });
-            }, 100);
-          }}
-          onDamagedStockClick={() => {
-            setActiveTab('inventory');
-            setFilterStockStatus('damaged');
-            setTimeout(() => {
-              const sec = document.getElementById('inventory-table-section');
-              if (sec) sec.scrollIntoView({ behavior: 'smooth' });
-            }, 100);
-          }}
-          onRejectedStockClick={() => {
-            setActiveTab('inventory');
-            setFilterStockStatus('rejected');
-            setTimeout(() => {
-              const sec = document.getElementById('inventory-table-section');
-              if (sec) sec.scrollIntoView({ behavior: 'smooth' });
-            }, 100);
-          }}
-          onExpiredStockClick={() => {
-            setActiveTab('inventory');
-            setFilterStockStatus('expired');
-            setTimeout(() => {
-              const sec = document.getElementById('inventory-table-section');
-              if (sec) sec.scrollIntoView({ behavior: 'smooth' });
-            }, 100);
-          }}
-        />
+        {/* Collapsible live metrics & analytics section to fit the screen */}
+        <div className="galaxy-glass border border-white/5 rounded-2xl overflow-hidden shadow-xl transition-all duration-300">
+          <div 
+            onClick={() => setShowAnalytics(!showAnalytics)}
+            className="px-5 py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-slate-900/60 backdrop-blur-md cursor-pointer hover:bg-slate-900/80 transition-all select-none"
+          >
+            <div className="flex items-center gap-2.5">
+              <div className="p-2 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-400">
+                <Database size={16} />
+              </div>
+              <div>
+                <h3 className="text-sm font-black uppercase text-amber-300 tracking-wider font-sans flex items-center gap-2">
+                  📈 Live Inventory Analytics & Trends 
+                  {!showAnalytics && (
+                    <span className="text-[10px] lowercase text-slate-500 font-semibold font-mono hidden md:inline-block">
+                      (click to view charts & breakdowns)
+                    </span>
+                  )}
+                </h3>
+                <p className="text-[11px] text-slate-400 font-bold mt-0.5">
+                  Comprehensive monthly graphs, total valuations, stock warnings, and status tracking matrices.
+                </p>
+              </div>
+            </div>
 
-        {/* Real-time Interactive Monthly Analytics Graphs */}
-        <MonthlyAnalytics 
-          items={items} 
-          issues={issues} 
-          receives={receives} 
-          selectedWarehouseFilter={selectedWarehouseFilter}
-        />
+            <div className="flex items-center gap-3.5 self-end sm:self-auto">
+              {/* Compact collapsed stats preview */}
+              {!showAnalytics && (
+                <div className="flex items-center gap-2.5 text-[11px] font-mono font-black text-slate-400 mr-2 bg-slate-950/40 px-3 py-1.5 rounded-lg border border-white/5">
+                  <span className="flex items-center gap-1">
+                    📦 <span className="text-slate-200">{items.length} Distinct Items</span>
+                  </span>
+                  <span className="text-slate-700">|</span>
+                  <span className="flex items-center gap-1">
+                    ⚠️ <span className={criticalLowStockItems.length > 0 ? "text-amber-400 font-black animate-pulse" : "text-slate-300"}>{criticalLowStockItems.length} Low Stock</span>
+                  </span>
+                </div>
+              )}
+
+              <button
+                type="button"
+                className={`py-1.5 px-3 rounded-lg text-[10.5px] font-black uppercase tracking-wider transition-all flex items-center gap-1 cursor-pointer select-none ${
+                  showAnalytics 
+                    ? "bg-amber-600/20 text-amber-300 border border-amber-500/30 hover:bg-amber-600/30" 
+                    : "bg-amber-500 hover:bg-amber-400 text-slate-950"
+                }`}
+              >
+                <span>{showAnalytics ? "Collapse" : "Expand"}</span>
+                {showAnalytics ? <ChevronUp size={13} strokeWidth={3} /> : <ChevronDown size={13} strokeWidth={3} />}
+              </button>
+            </div>
+          </div>
+
+          {showAnalytics && (
+            <div className="p-5 border-t border-white/5 space-y-6 animate-in slide-in-from-top duration-300">
+              {/* Dashboard Stats Section */}
+              <StatsGrid 
+                items={items} 
+                issues={issues} 
+                receives={receives} 
+                selectedWarehouseFilter={selectedWarehouseFilter}
+                onLowStockClick={() => {
+                  setActiveTab('inventory');
+                  setFilterStockStatus('low');
+                  setTimeout(() => {
+                    const sec = document.getElementById('inventory-table-section');
+                    if (sec) sec.scrollIntoView({ behavior: 'smooth' });
+                  }, 100);
+                }}
+                onOutOfStockClick={() => {
+                  setActiveTab('inventory');
+                  setFilterStockStatus('out');
+                  setTimeout(() => {
+                    const sec = document.getElementById('inventory-table-section');
+                    if (sec) sec.scrollIntoView({ behavior: 'smooth' });
+                  }, 100);
+                }}
+                onDamagedStockClick={() => {
+                  setActiveTab('inventory');
+                  setFilterStockStatus('damaged');
+                  setTimeout(() => {
+                    const sec = document.getElementById('inventory-table-section');
+                    if (sec) sec.scrollIntoView({ behavior: 'smooth' });
+                  }, 100);
+                }}
+                onRejectedStockClick={() => {
+                  setActiveTab('inventory');
+                  setFilterStockStatus('rejected');
+                  setTimeout(() => {
+                    const sec = document.getElementById('inventory-table-section');
+                    if (sec) sec.scrollIntoView({ behavior: 'smooth' });
+                  }, 100);
+                }}
+                onExpiredStockClick={() => {
+                  setActiveTab('inventory');
+                  setFilterStockStatus('expired');
+                  setTimeout(() => {
+                    const sec = document.getElementById('inventory-table-section');
+                    if (sec) sec.scrollIntoView({ behavior: 'smooth' });
+                  }, 100);
+                }}
+              />
+
+              {/* Real-time Interactive Monthly Analytics Graphs */}
+              <div className="border-t border-white/5 pt-5">
+                <MonthlyAnalytics 
+                  items={items} 
+                  issues={issues} 
+                  receives={receives} 
+                  selectedWarehouseFilter={selectedWarehouseFilter}
+                />
+              </div>
+            </div>
+          )}
+        </div>
 
         {/* Real-time Warning Stock Summary Panel */}
         {filterStockStatus !== 'all' && activeTab === 'inventory' && (
@@ -859,11 +1027,12 @@ export default function App() {
           
           {/* Section Controller bar / Tabs */}
           <div className="border-b border-white/5 px-6 py-4 flex flex-col md:flex-row md:items-center justify-between gap-4 bg-slate-900/40 backdrop-blur-md">
-            <div className="flex gap-2 p-1 bg-slate-950/40 rounded-xl max-w-xs md:max-w-md w-full border border-white/5">
+            <div className="flex gap-2 p-1 bg-slate-950/40 rounded-xl max-w-md md:max-w-2xl w-full border border-white/5">
               {[
                 { id: 'inventory', label: 'Registered Catalog', count: items.length },
                 { id: 'issues', label: 'Issues History (Log)', count: issues.length },
                 { id: 'receives', label: 'Supplier In-Flow', count: receives.length },
+                { id: 'settings', label: '⚙️ Warehouses & Depts', count: warehouses.length + departments.length },
               ].map((tab) => (
                 <button
                   key={tab.id}
@@ -872,14 +1041,14 @@ export default function App() {
                     setActiveTab(tab.id as any);
                     setSearchTerm('');
                   }}
-                  className={`flex-1 py-1.5 text-center rounded-lg text-xs font-extrabold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                  className={`flex-1 py-1.5 px-2 text-center rounded-lg text-xs font-extrabold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
                     activeTab === tab.id
                       ? 'bg-amber-600 text-white shadow-md'
                       : 'text-slate-400 hover:text-slate-200 hover:bg-white/5'
                   }`}
                 >
-                  {tab.label}
-                  <span className={`px-1.5 py-0.5 text-[10px] rounded-full font-mono ${activeTab === tab.id ? 'bg-amber-700 text-white' : 'bg-slate-900 text-slate-400'}`}>
+                  <span className="truncate">{tab.label}</span>
+                  <span className={`px-1.5 py-0.5 text-[10px] rounded-full font-mono shrink-0 ${activeTab === tab.id ? 'bg-amber-700 text-white' : 'bg-slate-900 text-slate-400'}`}>
                     {tab.count}
                   </span>
                 </button>
@@ -917,9 +1086,9 @@ export default function App() {
                 className="w-full text-xs font-black py-3 outline-none bg-transparent text-amber-300 border-none cursor-pointer"
               >
                 <option value="all" className="bg-slate-900 text-slate-100 font-bold">📍 All Warehouses (Global)</option>
-                <option value="Main Warehouse" className="bg-slate-900 text-slate-100 font-bold">🏢 Main Warehouse</option>
-                <option value="Shed A Warehouse" className="bg-slate-900 text-slate-100 font-bold">🏢 Shed A Warehouse</option>
-                <option value="Sub-Depot Warehouse" className="bg-slate-900 text-slate-100 font-bold">🏢 Sub-Depot Warehouse</option>
+                {warehouses.map((wh) => (
+                  <option key={wh} value={wh} className="bg-slate-900 text-slate-100 font-bold">🏢 {wh}</option>
+                ))}
               </select>
             </div>
 
@@ -944,9 +1113,9 @@ export default function App() {
                 className="w-full text-xs font-bold py-3 outline-none bg-transparent text-slate-200 border-none cursor-pointer"
               >
                 <option value="all" className="bg-slate-900 text-slate-100">Dept: All Departments</option>
-                {['Civil', 'Electrical', 'Plumbing', 'Safety', 'Machinery', 'Tools', 'Other'].map((u) => (
-                  <option key={u} value={u} className="bg-slate-900 text-slate-100">
-                    Dept: {u}
+                {departments.map((deptName) => (
+                  <option key={deptName} value={deptName} className="bg-slate-900 text-slate-100">
+                    Dept: {deptName}
                   </option>
                 ))}
               </select>
@@ -1003,11 +1172,11 @@ export default function App() {
           </div>
 
           {/* 5. Core Content Renderer */}
-          <div className="overflow-x-auto">
+          <div className="overflow-x-auto max-h-[580px] overflow-y-auto scrollbar-thin">
             {activeTab === 'inventory' && (
               <table className="w-full text-left border-collapse">
-                <thead>
-                  <tr className="border-b border-white/5 bg-slate-950/40 text-slate-300 text-[10px] font-black tracking-wider uppercase">
+                <thead className="sticky top-0 z-10 bg-slate-950">
+                  <tr className="border-b border-white/5 text-slate-300 text-[10px] font-black tracking-wider uppercase">
                     <th className="py-4 px-6 w-16">No.</th>
                     <th className="py-4 px-6 w-28">Item Code</th>
                     <th className="py-4 px-6 w-96">Description</th>
@@ -1103,7 +1272,7 @@ export default function App() {
                             </span>
                           </td>
                           <td className="py-3 px-6 text-right font-mono font-medium text-slate-300">
-                            ₹ {item.pricePerUnit.toFixed(2)}
+                            SAR {item.pricePerUnit.toFixed(2)}
                           </td>
                           <td className="py-3 px-6 text-center font-mono text-slate-400 bg-white/5">
                             {item.initialQty}
@@ -1120,7 +1289,7 @@ export default function App() {
                             </span>
                           </td>
                           <td className="py-3 px-6 text-right font-mono font-bold text-slate-100">
-                            ₹ {totalValuation.toLocaleString('en-IN')}
+                            SAR {totalValuation.toLocaleString('en-SA')}
                           </td>
                           <td className="py-3 px-6 text-slate-400 font-medium">
                             {item.remark || '-'}
@@ -1186,8 +1355,8 @@ export default function App() {
             {/* Released Stock History Table */}
             {activeTab === 'issues' && (
               <table className="w-full text-left border-collapse font-sans text-xs">
-                <thead>
-                  <tr className="border-b border-white/5 bg-slate-950/40 text-slate-300 text-[10px] uppercase font-black tracking-wider">
+                <thead className="sticky top-0 z-10 bg-slate-950">
+                  <tr className="border-b border-white/5 text-slate-300 text-[10px] uppercase font-black tracking-wider">
                     <th className="py-4 px-6">Sl No.</th>
                     <th className="py-4 px-6">Released Item Code</th>
                     <th className="py-4 px-6">Issued To / Receiver</th>
@@ -1246,7 +1415,7 @@ export default function App() {
                             </span>
                           </td>
                           <td className="py-3 px-6 font-medium text-slate-300">
-                            {new Date(is.issuedAt).toLocaleString('en-IN')}
+                            {new Date(is.issuedAt).toLocaleString('en-US')}
                           </td>
                           <td className="py-3 px-6 text-slate-300">
                             <div className="text-slate-100 font-bold">{is.issuedByName}</div>
@@ -1267,8 +1436,8 @@ export default function App() {
             {/* Received Stock In Flow logs */}
             {activeTab === 'receives' && (
               <table className="w-full text-left border-collapse">
-                <thead>
-                  <tr className="border-b border-white/5 bg-slate-950/40 text-slate-300 text-[10px] uppercase font-black tracking-wider">
+                <thead className="sticky top-0 z-10 bg-slate-950">
+                  <tr className="border-b border-white/5 text-slate-300 text-[10px] uppercase font-black tracking-wider">
                     <th className="py-4 px-6">Sl No.</th>
                     <th className="py-4 px-6">Received Item Code</th>
                     <th className="py-4 px-6 text-center font-bold">Qty Added</th>
@@ -1329,15 +1498,15 @@ export default function App() {
                           </td>
                           <td className="py-3 px-6 text-slate-300 font-mono font-bold">
                             {rc.pricePerUnit ? (
-                              <span className="text-emerald-400">₹{rc.pricePerUnit}</span>
+                              <span className="text-emerald-400">SAR {rc.pricePerUnit}</span>
                             ) : matchedItem?.pricePerUnit ? (
-                              <span className="text-slate-400">₹{matchedItem.pricePerUnit}</span>
+                              <span className="text-slate-400">SAR {matchedItem.pricePerUnit}</span>
                             ) : (
                               <span className="text-slate-600">N/A</span>
                             )}
                           </td>
                           <td className="py-3 px-6 font-medium text-slate-300">
-                            {new Date(rc.receivedAt).toLocaleString('en-IN')}
+                            {new Date(rc.receivedAt).toLocaleString('en-US')}
                           </td>
                           <td className="py-3 px-6 text-slate-300">
                             <div className="text-slate-100 font-semibold">{rc.receivedByName}</div>
@@ -1353,6 +1522,155 @@ export default function App() {
                   )}
                 </tbody>
               </table>
+            )}
+
+            {activeTab === 'settings' && (
+              <div className="p-6 text-slate-100 bg-slate-950/25 border-t border-white/5 max-w-full">
+                <div className="mb-6 bg-slate-900/30 p-4 rounded-xl border border-white/5">
+                  <h3 className="text-sm font-black uppercase text-amber-400 tracking-wider flex items-center gap-2 font-sans">
+                    ⚙️ Master Configuration & Operating Settings
+                  </h3>
+                  <p className="text-xs text-slate-400 mt-1.5 leading-relaxed font-semibold">
+                    Manage active store Warehouse Locations and Requesting Departments in real-time. Added options are immediately synchronized with the Firestore database and become available instantly in all forms (Register, Issue, Refill) and filters across all devices.
+                  </p>
+                </div>
+
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                  {/* Column 1: Warehouses */}
+                  <div className="bg-slate-900/40 p-5 rounded-2xl border border-white/5 flex flex-col space-y-4">
+                    <div className="flex items-center justify-between border-b border-white/5 pb-2">
+                      <span className="font-extrabold text-xs text-slate-200 uppercase tracking-wider flex items-center gap-1.5 font-sans">
+                        🏢 Warehouse Locations ({warehouses.length})
+                      </span>
+                    </div>
+
+                    {/* Inline Form to Add Warehouse */}
+                    <div className="flex gap-2">
+                      <input
+                        type="text"
+                        value={settingsNewWh}
+                        onChange={(e) => setSettingsNewWh(e.target.value)}
+                        placeholder="e.g. Yard C Sub-Depot"
+                        className="flex-1 text-xs border border-white/10 rounded-xl px-3 py-2.5 bg-slate-950 text-slate-100 placeholder-slate-600 outline-none focus:border-amber-500 font-semibold"
+                      />
+                      <button
+                        type="button"
+                        onClick={async () => {
+                          const val = settingsNewWh.trim();
+                          if (!val) return;
+                          if (warehouses.includes(val)) {
+                            window.alert("This warehouse location is already registered.");
+                            return;
+                          }
+                          await handleAddWarehouse(val);
+                          setSettingsNewWh('');
+                        }}
+                        className="px-4 py-2 bg-amber-600 hover:bg-amber-550 text-white font-extrabold text-xs rounded-xl active:scale-95 transition-all cursor-pointer shadow-md select-none shrink-0"
+                      >
+                        Add Location
+                      </button>
+                    </div>
+
+                    {/* Warehouses list */}
+                    <div className="space-y-2 max-h-80 overflow-y-auto pr-1">
+                      {warehouses.map((wh) => {
+                        const isDefault = ['Main Warehouse', 'Shed A Warehouse', 'Sub-Depot Warehouse'].includes(wh);
+                        return (
+                          <div 
+                            key={wh} 
+                            className="flex items-center justify-between p-3 bg-slate-950/60 rounded-xl border border-white/5 hover:border-white/10 transition-colors"
+                          >
+                            <span className="text-xs font-bold text-slate-100 flex items-center gap-1.5 font-sans">
+                              🏢 {wh}
+                            </span>
+                            {isDefault ? (
+                              <span className="text-[9px] font-extrabold text-slate-500 uppercase flex items-center gap-1 tracking-wider mr-2">
+                                🔒 Locked
+                              </span>
+                            ) : (
+                              <button
+                                type="button"
+                                onClick={() => handleDeleteWarehouse(wh)}
+                                className="p-1.5 hover:bg-red-500/10 text-slate-400 hover:text-red-400 rounded-lg transition-colors cursor-pointer mr-1"
+                                title="Delete Custom Warehouse"
+                              >
+                                <Trash2 size={12} />
+                              </button>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {/* Column 2: Departments */}
+                  <div className="bg-slate-900/40 p-5 rounded-2xl border border-white/5 flex flex-col space-y-4">
+                    <div className="flex items-center justify-between border-b border-white/5 pb-2">
+                      <span className="font-extrabold text-xs text-slate-200 uppercase tracking-wider flex items-center gap-1.5 font-sans">
+                        🛠️ Requesting Departments ({departments.length})
+                      </span>
+                    </div>
+
+                    {/* Inline Form to Add Department */}
+                    <div className="flex gap-2">
+                      <input
+                        type="text"
+                        value={settingsNewDept}
+                        onChange={(e) => setSettingsNewDept(e.target.value)}
+                        placeholder="e.g. Landscaping & Civil"
+                        className="flex-1 text-xs border border-white/10 rounded-xl px-3 py-2.5 bg-slate-950 text-slate-100 placeholder-slate-600 outline-none focus:border-amber-500 font-semibold"
+                      />
+                      <button
+                        type="button"
+                        onClick={async () => {
+                          const val = settingsNewDept.trim();
+                          if (!val) return;
+                          if (departments.includes(val)) {
+                            window.alert("This requesting department is already registered.");
+                            return;
+                          }
+                          await handleAddDepartment(val);
+                          setSettingsNewDept('');
+                        }}
+                        className="px-4 py-2 bg-amber-600 hover:bg-amber-550 text-white font-extrabold text-xs rounded-xl active:scale-95 transition-all cursor-pointer shadow-md select-none shrink-0"
+                      >
+                        Add Dept
+                      </button>
+                    </div>
+
+                    {/* Departments list */}
+                    <div className="space-y-2 max-h-80 overflow-y-auto pr-1">
+                      {departments.map((deptName) => {
+                        const isDefault = ['Civil', 'Electrical', 'Plumbing', 'Safety', 'Machinery', 'Tools', 'Other'].includes(deptName);
+                        return (
+                          <div 
+                            key={deptName} 
+                            className="flex items-center justify-between p-3 bg-slate-950/60 rounded-xl border border-white/5 hover:border-white/10 transition-colors"
+                          >
+                            <span className="text-xs font-bold text-slate-100 flex items-center gap-1.5 font-sans">
+                              🛠️ {deptName}
+                            </span>
+                            {isDefault ? (
+                              <span className="text-[9px] font-extrabold text-slate-500 uppercase flex items-center gap-1 tracking-wider mr-2">
+                                🔒 Locked
+                              </span>
+                            ) : (
+                              <button
+                                type="button"
+                                onClick={() => handleDeleteDepartment(deptName)}
+                                className="p-1.5 hover:bg-red-500/10 text-slate-400 hover:text-red-400 rounded-lg transition-colors cursor-pointer mr-1"
+                                title="Delete Custom Department"
+                              >
+                                <Trash2 size={12} />
+                              </button>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </div>
+              </div>
             )}
           </div>
 
@@ -1376,6 +1694,8 @@ export default function App() {
         onSave={handleSaveItem}
         existingItem={editingItem}
         allItems={items}
+        departments={departments}
+        onAddDepartment={handleAddDepartment}
       />
 
       <IssueFormModal
@@ -1384,6 +1704,10 @@ export default function App() {
         onIssue={handleIssueItem}
         items={items}
         getCurrentStock={getCurrentStock}
+        warehouses={warehouses}
+        departments={departments}
+        onAddWarehouse={handleAddWarehouse}
+        onAddDepartment={handleAddDepartment}
       />
 
       <ReceiveFormModal
@@ -1391,6 +1715,8 @@ export default function App() {
         onClose={() => setIsReceiveModalOpen(false)}
         onReceive={handleReceiveItem}
         items={items}
+        warehouses={warehouses}
+        onAddWarehouse={handleAddWarehouse}
       />
 
       <PDFReportHubModal

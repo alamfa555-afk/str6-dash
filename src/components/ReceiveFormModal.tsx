@@ -7,9 +7,18 @@ interface ReceiveModalProps {
   onClose: () => void;
   onReceive: (transaction: Omit<ReceiveTransaction, 'id'> & { updateMaster?: boolean }) => void;
   items: InventoryItem[];
+  warehouses: string[];
+  onAddWarehouse?: (name: string) => Promise<void>;
 }
 
-export function ReceiveFormModal({ isOpen, onClose, onReceive, items }: ReceiveModalProps) {
+export function ReceiveFormModal({ 
+  isOpen, 
+  onClose, 
+  onReceive, 
+  items,
+  warehouses,
+  onAddWarehouse
+}: ReceiveModalProps) {
   const [selectedItemCode, setSelectedItemCode] = useState('');
   const [warehouse, setWarehouse] = useState('Main Warehouse');
   const [quantity, setQuantity] = useState<number>(0);
@@ -23,6 +32,10 @@ export function ReceiveFormModal({ isOpen, onClose, onReceive, items }: ReceiveM
   const [supplierName, setSupplierName] = useState('');
   const [pricePerUnit, setPricePerUnit] = useState<number>(0);
   const [updateMaster, setUpdateMaster] = useState(true);
+
+  // Custom states for dynamic inline warehouse additions
+  const [showAddWarehouseForm, setShowAddWarehouseForm] = useState(false);
+  const [newWarehouseName, setNewWarehouseName] = useState('');
 
   useEffect(() => {
     if (isOpen) {
@@ -53,6 +66,8 @@ export function ReceiveFormModal({ isOpen, onClose, onReceive, items }: ReceiveM
       setRemark('');
       setErrorMsg('');
       setUpdateMaster(true);
+      setShowAddWarehouseForm(false);
+      setNewWarehouseName('');
     }
   }, [isOpen, items]);
 
@@ -140,23 +155,65 @@ export function ReceiveFormModal({ isOpen, onClose, onReceive, items }: ReceiveM
           )}
 
           <div>
-            <label className="block text-xs font-bold text-slate-400 uppercase mb-1 font-sans">Select Active Warehouse Location *</label>
-            <select
-              value={warehouse}
-              onChange={(e) => setWarehouse(e.target.value)}
-              className="w-full text-sm border border-slate-800 rounded-lg px-3 py-2.5 bg-slate-950 font-extrabold text-amber-400 outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
-            >
-              {['Main Warehouse', 'Shed A Warehouse', 'Sub-Depot Warehouse'].map((wh) => (
-                <option 
-                  key={wh} 
-                  value={wh} 
-                  className="bg-slate-950 text-slate-100 font-semibold"
-                  style={{ color: '#fbbf24', backgroundColor: '#090d16' }}
+            <div className="flex justify-between items-center mb-1">
+              <label className="block text-xs font-bold text-slate-400 uppercase font-sans">Select Active Warehouse Location *</label>
+              {onAddWarehouse && (
+                <button
+                  type="button"
+                  onClick={() => setShowAddWarehouseForm(!showAddWarehouseForm)}
+                  className="text-[10px] text-emerald-400 hover:text-emerald-350 font-extrabold flex items-center gap-0.5 focus:outline-none"
                 >
-                  🏬 {wh}
-                </option>
-              ))}
-            </select>
+                  <Plus size={10} strokeWidth={3} /> {showAddWarehouseForm ? "Cancel" : "Add New"}
+                </button>
+              )}
+            </div>
+
+            {showAddWarehouseForm ? (
+              <div className="flex gap-1.5 animate-in fade-in duration-200">
+                <input
+                  type="text"
+                  value={newWarehouseName}
+                  onChange={(e) => setNewWarehouseName(e.target.value)}
+                  placeholder="e.g. Yard C Warehouse"
+                  className="flex-1 text-xs border border-slate-800 rounded-lg px-2.5 py-2.5 bg-slate-950 text-slate-100 font-semibold focus:border-semibold outline-none"
+                />
+                <button
+                  type="button"
+                  onClick={async () => {
+                    if (newWarehouseName.trim() && onAddWarehouse) {
+                      try {
+                        await onAddWarehouse(newWarehouseName.trim());
+                        setWarehouse(newWarehouseName.trim());
+                        setNewWarehouseName('');
+                        setShowAddWarehouseForm(false);
+                      } catch (err) {
+                        console.error("Failed to add warehouse:", err);
+                      }
+                    }
+                  }}
+                  className="px-3 py-2 bg-emerald-600 hover:bg-emerald-550 text-white font-bold text-xs rounded-lg transition-all"
+                >
+                  Save
+                </button>
+              </div>
+            ) : (
+              <select
+                value={warehouse}
+                onChange={(e) => setWarehouse(e.target.value)}
+                className="w-full text-sm border border-slate-800 rounded-lg px-3 py-2.5 bg-slate-950 font-extrabold text-amber-400 outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
+              >
+                {warehouses.map((wh) => (
+                  <option 
+                    key={wh} 
+                    value={wh} 
+                    className="bg-slate-950 text-slate-100 font-semibold"
+                    style={{ color: '#fbbf24', backgroundColor: '#090d16' }}
+                  >
+                    🏬 {wh}
+                  </option>
+                ))}
+              </select>
+            )}
           </div>
 
           <div>
@@ -220,7 +277,7 @@ export function ReceiveFormModal({ isOpen, onClose, onReceive, items }: ReceiveM
                 />
               </div>
               <div>
-                <label className="block text-[10px] uppercase font-semibold text-slate-400 mb-1">Purchase Price per Unit (₹)</label>
+                <label className="block text-[10px] uppercase font-semibold text-slate-400 mb-1">Purchase Price per Unit (SAR)</label>
                 <input 
                   type="number" 
                   step="any"
