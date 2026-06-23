@@ -11,42 +11,42 @@ interface PDFRequest {
   generatedBy: string; // User email / identifier
 }
 
-function drawAjantaLogo(doc: jsPDF, x: number, y: number) {
+function drawAjantaLogo(doc: jsPDF, x: number, y: number, scale = 0.58) {
   // Save current colors
   const prevDrawColor = doc.getDrawColor();
   const prevFillColor = doc.getFillColor();
 
   // Draw an elegant circular shield background for the logo
   doc.setFillColor(235, 245, 255);
-  doc.ellipse(x + 10.5, y + 7.5, 14, 11, 'F');
+  doc.ellipse(x + 10.5 * scale, y + 7.5 * scale, 14 * scale, 11 * scale, 'F');
   
   // Highlight border for the logo shield
   doc.setDrawColor(242, 114, 21);
-  doc.setLineWidth(0.4);
-  doc.ellipse(x + 10.5, y + 7.5, 14, 11, 'S');
+  doc.setLineWidth(0.3 * scale);
+  doc.ellipse(x + 10.5 * scale, y + 7.5 * scale, 14 * scale, 11 * scale, 'S');
 
   // Left Leg: Grey (Concrete texture theme) - Split into two triangles
   doc.setFillColor(150, 155, 160);
-  doc.triangle(x + 9, y, x + 12.5, y, x + 5, y + 15, 'F');
-  doc.triangle(x + 9, y, x + 5, y + 15, x, y + 15, 'F');
+  doc.triangle(x + 9 * scale, y, x + 12.5 * scale, y, x + 5 * scale, y + 15 * scale, 'F');
+  doc.triangle(x + 9 * scale, y, x + 5 * scale, y + 15 * scale, x, y + 15 * scale, 'F');
 
   // Right Leg: Dark Navy Blue - Split into two triangles
   doc.setFillColor(26, 43, 76);
-  doc.triangle(x + 12.5, y, x + 16, y, x + 21, y + 15, 'F');
-  doc.triangle(x + 12.5, y, x + 21, y + 15, x + 15, y + 15, 'F');
+  doc.triangle(x + 12.5 * scale, y, x + 16 * scale, y, x + 21 * scale, y + 15 * scale, 'F');
+  doc.triangle(x + 12.5 * scale, y, x + 21 * scale, y + 15 * scale, x + 15 * scale, y + 15 * scale, 'F');
 
   // Crossbar Belt: Orange - Split into two triangles
   doc.setFillColor(242, 114, 21);
-  doc.triangle(x + 5.5, y + 9.5, x + 18, y + 9.5, x + 19, y + 12, 'F');
-  doc.triangle(x + 5.5, y + 9.5, x + 19, y + 12, x + 4.5, y + 12, 'F');
+  doc.triangle(x + 5.5 * scale, y + 9.5 * scale, x + 18 * scale, y + 9.5 * scale, x + 19 * scale, y + 12 * scale, 'F');
+  doc.triangle(x + 5.5 * scale, y + 9.5 * scale, x + 19 * scale, y + 12 * scale, x + 4.5 * scale, y + 12 * scale, 'F');
 
   // White Belt Buckle outer frame
   doc.setFillColor(255, 255, 255);
-  doc.rect(x + 13.5, y + 10, 2.5, 1.6, 'F');
+  doc.rect(x + 13.5 * scale, y + 10 * scale, 2.5 * scale, 1.6 * scale, 'F');
   
   // Tiny orange center of buckle
   doc.setFillColor(242, 114, 21);
-  doc.rect(x + 14.3, y + 10.4, 0.9, 0.8, 'F');
+  doc.rect(x + 14.3 * scale, y + 10.4 * scale, 0.9 * scale, 0.8 * scale, 'F');
 
   // Restore original colors
   doc.setFillColor(prevFillColor);
@@ -121,52 +121,54 @@ export function generateInventoryPDF({
   };
 
   // --- PDF Styling & Header Constants ---
+  const margin = 19.05; // 0.75 inch (19.05 mm) narrow margin on all sides
+  const rightMarginX = 210 - margin;
   const primaryColor: [number, number, number] = [26, 43, 76]; // Matching the Navy Indigo of Ajanta Logo
   const secondaryColor = [31, 41, 55]; // Gray-800
 
   // 2. Add Executive Header Block (Ajanta Construction Company Letterhead)
-  // Draw Logo Vector
-  drawAjantaLogo(doc, 14, 10);
+  // Draw Logo Vector (compact scale 0.58 used by default, positioned higher at y=7)
+  drawAjantaLogo(doc, margin, 7);
 
-  // Logo Typography Text
+  // Logo Typography Text next to compact logo
   doc.setTextColor(26, 43, 76);
   doc.setFont('Helvetica', 'bold');
-  doc.setFontSize(16);
-  doc.text('AJANTA', 46, 15);
+  doc.setFontSize(13);
+  doc.text('AJANTA', margin + 17, 11);
 
   doc.setTextColor(242, 114, 21);
   doc.setFont('Helvetica', 'bold');
-  doc.setFontSize(10.5);
-  doc.text('CONSTRUCTION COMPANY', 46, 20);
+  doc.setFontSize(8.5);
+  doc.text('CONSTRUCTION COMPANY', margin + 17, 14.8);
 
   doc.setTextColor(115, 125, 135);
   doc.setFont('Helvetica', 'normal');
-  doc.setFontSize(7.5);
-  doc.text('STRENGTH  •  TRUST  •  INNOVATION', 46, 24);
+  doc.setFontSize(6);
+  doc.text('STRENGTH  •  TRUST  •  INNOVATION', margin + 17, 17.8);
 
-  // Decorative Accent line separating letterhead
+  // Decorative Accent line separating letterhead (scaled down and shifted up)
   doc.setFillColor(242, 114, 21); // Orange
-  doc.rect(14, 31, 182, 0.8, 'F');
+  doc.rect(margin, 20.5, 210 - 2 * margin, 0.6, 'F');
 
   // 3. Document Metadata Block
   doc.setTextColor(secondaryColor[0], secondaryColor[1], secondaryColor[2]);
-  doc.setFontSize(12);
+  doc.setFontSize(10.5);
   doc.setFont('Helvetica', 'bold');
-  doc.text(reportTitleMap[reportType], 14, 43);
+  doc.text(reportTitleMap[reportType], margin, 27);
 
   doc.setFont('Helvetica', 'oblique');
-  doc.setFontSize(9);
-  doc.text(reportSubtitleMap[reportType], 14, 47);
+  doc.setFontSize(8);
+  doc.text(reportSubtitleMap[reportType], margin, 30.5);
 
-  // Meta parameters (Right-aligned or structured layout)
+  // Meta parameters (Right-aligned using rightMarginX and alignment option)
   doc.setFont('Helvetica', 'bold');
-  doc.setFontSize(8.5);
-  doc.text('Report Generation Details:', 140, 43);
+  doc.setFontSize(7.5);
+  doc.text('Report Generation Details:', rightMarginX, 27, { align: 'right' });
   doc.setFont('Helvetica', 'normal');
-  doc.text(`Date & Time: ${todayStr} ${timeStr}`, 140, 47.5);
-  doc.text(`Generated By: ${generatedBy}`, 140, 52);
-  doc.text(`Item Filter: ${selectedItemCode === 'all' ? 'All Inventory Items' : selectedItemCode}`, 140, 56.5);
-  doc.text(`Period Limit: ${reportType === 'all' ? 'All-Time History' : `Since ${startDateLimit.toLocaleDateString()}`}`, 140, 61);
+  doc.text(`Date & Time: ${todayStr} ${timeStr}`, rightMarginX, 30.5, { align: 'right' });
+  doc.text(`Generated By: ${generatedBy}`, rightMarginX, 34, { align: 'right' });
+  doc.text(`Item Filter: ${selectedItemCode === 'all' ? 'All Inventory Items' : selectedItemCode}`, rightMarginX, 37.5, { align: 'right' });
+  doc.text(`Period Limit: ${reportType === 'all' ? 'All-Time History' : `Since ${startDateLimit.toLocaleDateString()}`}`, rightMarginX, 41, { align: 'right' });
 
   // 4. Quick Summary Overview stats cards
   let totalUniqueItems = filteredItems.length;
@@ -198,9 +200,9 @@ export function generateInventoryPDF({
     }
   });
 
-  // Table summary box
+  // Table summary box (shifted up significantly from startY: 66 to startY: 44.5)
   autoTable(doc, {
-    startY: 66,
+    startY: 44.5,
     head: [['Stats Metric', 'Value', 'Description']],
     body: [
       ['Total Items Listed', String(totalUniqueItems), 'Registered items matching chosen filters'],
@@ -209,11 +211,12 @@ export function generateInventoryPDF({
       [`Total Released Quantity (${reportType})`, String(totalIssuedQtyInPeriod), `Sum of units issued during this ${reportType} period`]
     ],
     theme: 'grid',
+    margin: { left: margin, right: margin },
     headStyles: { fillColor: [74, 85, 104], textColor: 255, fontStyle: 'bold' },
-    styles: { fontSize: 8.5 },
+    styles: { fontSize: 8, cellPadding: 1.5 },
     columnStyles: {
-      0: { fontStyle: 'bold', cellWidth: 60 },
-      1: { cellWidth: 45 },
+      0: { fontStyle: 'bold', cellWidth: 55 },
+      1: { cellWidth: 40 },
       2: { textColor: [100, 116, 139] }
     }
   });
@@ -222,7 +225,7 @@ export function generateInventoryPDF({
   const lastY = (doc as any).lastAutoTable.finalY + 8;
   doc.setFont('Helvetica', 'bold');
   doc.setFontSize(11);
-  doc.text('1. STOCK INVENTORY BALANCE STATUS', 14, lastY);
+  doc.text('1. STOCK INVENTORY BALANCE STATUS', margin, lastY);
 
   const itemRows = filteredItems.map((item, index) => {
     const itemReceived = receives
@@ -271,20 +274,21 @@ export function generateInventoryPDF({
     head: [['#', 'Item Code', 'Description', 'Unit', 'Price/Unit', 'Opening', 'Total Recv', 'Total Isd', 'Current Stock', 'Total Value', 'Status']],
     body: itemRows,
     theme: 'striped',
+    margin: { left: margin, right: margin },
     headStyles: { fillColor: primaryColor, textColor: 255 },
-    styles: { fontSize: 7.5, cellPadding: 2 },
+    styles: { fontSize: 7, cellPadding: 1.5 },
     columnStyles: {
-      0: { cellWidth: 6 },
-      1: { fontStyle: 'bold', cellWidth: 22 },
-      2: { cellWidth: 38 },
-      3: { cellWidth: 12 },
-      4: { cellWidth: 20 },
-      5: { cellWidth: 14 },
-      6: { cellWidth: 22 },
-      7: { cellWidth: 22 },
-      8: { fontStyle: 'bold', cellWidth: 18 },
-      9: { cellWidth: 24 },
-      10: { fontStyle: 'bold', cellWidth: 22 }
+      0: { cellWidth: 5 },
+      1: { fontStyle: 'bold', cellWidth: 18 },
+      2: { cellWidth: 32 },
+      3: { cellWidth: 10 },
+      4: { cellWidth: 18 },
+      5: { cellWidth: 12 },
+      6: { cellWidth: 18 },
+      7: { cellWidth: 18 },
+      8: { fontStyle: 'bold', cellWidth: 14 },
+      9: { cellWidth: 20 },
+      10: { fontStyle: 'bold', cellWidth: 17 }
     },
     didDrawCell: (data: any) => {
       // Color code specific statuses
@@ -314,7 +318,7 @@ export function generateInventoryPDF({
   doc.setFont('Helvetica', 'bold');
   doc.setFontSize(11);
   doc.setTextColor(secondaryColor[0], secondaryColor[1], secondaryColor[2]);
-  doc.text('2. STOCK RELEASE & ISSUE REPORT LOGS', 14, activeY);
+  doc.text('2. STOCK RELEASE & ISSUE REPORT LOGS', margin, activeY);
 
   const displayIssueList = filteredIssues.filter((is) => {
     return selectedItemCode === 'all' || is.itemCode === selectedItemCode;
@@ -344,25 +348,26 @@ export function generateInventoryPDF({
     doc.setFont('Helvetica', 'normal');
     doc.setFontSize(9);
     doc.setTextColor(100, 116, 139);
-    doc.text(`No stock issue entries found during selected period range: [${reportType.toUpperCase()}]`, 14, activeY + 6);
+    doc.text(`No stock issue entries found during selected period range: [${reportType.toUpperCase()}]`, margin, activeY + 6);
   } else {
     autoTable(doc, {
       startY: activeY + 3,
       head: [['#', 'Item Code', 'Description', 'Issued To / Receiver', 'Dept', 'Qty', 'Date Issued', 'Issued By (ID)', 'Issue Remarks']],
       body: issueRows,
       theme: 'grid',
+      margin: { left: margin, right: margin },
       headStyles: { fillColor: [43, 108, 176], textColor: 255 }, // Dark Blue for transaction listings
-      styles: { fontSize: 7.5, cellPadding: 2 },
+      styles: { fontSize: 7, cellPadding: 1.5 },
       columnStyles: {
-        0: { cellWidth: 6 },
-        1: { fontStyle: 'bold', cellWidth: 22 },
-        2: { cellWidth: 32 },
-        3: { cellWidth: 34 },
-        4: { fontStyle: 'bold', cellWidth: 14 },
-        5: { fontStyle: 'bold', cellWidth: 12 },
-        6: { cellWidth: 26 },
-        7: { cellWidth: 30 },
-        8: { cellWidth: 30 }
+        0: { cellWidth: 5 },
+        1: { fontStyle: 'bold', cellWidth: 18 },
+        2: { cellWidth: 26 },
+        3: { cellWidth: 26 },
+        4: { fontStyle: 'bold', cellWidth: 12 },
+        5: { fontStyle: 'bold', cellWidth: 10 },
+        6: { cellWidth: 24 },
+        7: { cellWidth: 24 },
+        8: { cellWidth: 26 }
       }
     });
   }
@@ -377,8 +382,8 @@ export function generateInventoryPDF({
     doc.setTextColor(255, 255, 255);
     doc.setFont('Helvetica', 'normal');
     doc.setFontSize(7.5);
-    doc.text(`Ajanta Construction Company Store Automation Center | Page ${i} of ${pagesCount}`, 14, 292);
-    doc.text('This is an automatic audit record. No hand signature required.', 130, 292);
+    doc.text(`Ajanta Construction Company Store Automation Center | Page ${i} of ${pagesCount}`, margin, 292);
+    doc.text('This is an automatic audit record. No hand signature required.', rightMarginX, 292, { align: 'right' });
   }
 
   // Save/Download Action using modern safe anchor click to avoid iframe sandbox downloads limitation
