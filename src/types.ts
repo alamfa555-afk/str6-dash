@@ -3,6 +3,8 @@ export type UnitType = 'kg' | 'pcs' | 'box' | 'ltr' | 'mtr' | 'roll' | 'sheet' |
 export interface InventoryItem {
   id: string;
   itemCode: string; // Unique Identifier, e.g., "INV-001"
+  invNo?: string; // Invoice / Inventory Serial No.
+  warehouse?: string; // Default Warehouse Location
   description: string;
   unit: UnitType;
   initialQty: number; // Opening stock quantity
@@ -21,11 +23,14 @@ export interface IssueTransaction {
   id: string;
   itemCode: string;
   issuedTo: string; // Receiver/Recipient details
+  receiverIdType?: 'ID' | 'Mobile No';
+  receiverIdValue?: string;
   quantity: number; // Issued quantity
   department: string; // Department receiving the item
   issuedAt: string; // Timestamp of issue (ISO date string)
   issuedByName: string; // Name of person issuing the stock
   issuedById: string; // Employee ID of person issuing the stock
+  issuerTitle?: string; // Manager, Supervisor, Incharge, etc.
   remark?: string;
   warehouse?: string; // Multi-warehouse location
   withdrawReceiptNo?: string;

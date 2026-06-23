@@ -29,10 +29,13 @@ export function IssueFormModal({
   const [selectedItemCode, setSelectedItemCode] = useState('');
   const [warehouse, setWarehouse] = useState('Main Warehouse');
   const [issuedTo, setIssuedTo] = useState('');
+  const [receiverIdType, setReceiverIdType] = useState<'ID' | 'Mobile No'>('ID');
+  const [receiverIdValue, setReceiverIdValue] = useState('');
   const [quantity, setQuantity] = useState<number>(0);
   const [issuedAt, setIssuedAt] = useState('');
   const [issuedByName, setIssuedByName] = useState('');
   const [issuedById, setIssuedById] = useState('');
+  const [issuerTitle, setIssuerTitle] = useState('Manager');
   const [department, setDepartment] = useState('Civil');
   const [remark, setRemark] = useState('');
   
@@ -61,6 +64,8 @@ export function IssueFormModal({
         setSelectedItemCode('');
       }
       setIssuedTo('');
+      setReceiverIdType('ID');
+      setReceiverIdValue('');
       setQuantity(0);
       
       // Auto-set current local datetime in ISO-like format for input value (YYYY-MM-DDTHH:MM)
@@ -73,8 +78,10 @@ export function IssueFormModal({
       // Read default issuer from localStorage if previously stored
       const savedIssuerName = localStorage.getItem('last_issuer_name') || '';
       const savedIssuerId = localStorage.getItem('last_issuer_id') || '';
+      const savedIssuerTitle = localStorage.getItem('last_issuer_title') || 'Manager';
       setIssuedByName(savedIssuerName);
       setIssuedById(savedIssuerId);
+      setIssuerTitle(savedIssuerTitle);
       
       setRemark('');
       setErrorMsg('');
@@ -133,6 +140,11 @@ export function IssueFormModal({
       return;
     }
 
+    if (!receiverIdValue.trim()) {
+      setErrorMsg(`Receiver ${receiverIdType === 'ID' ? 'ID' : 'Mobile No.'} is mandatory.`);
+      return;
+    }
+
     if (quantity <= 0) {
       setErrorMsg('Issue quantity must be greater than 0.');
       return;
@@ -163,11 +175,14 @@ export function IssueFormModal({
     onIssue({
       itemCode: selectedItemCode,
       issuedTo: issuedTo.trim(),
+      receiverIdType,
+      receiverIdValue: receiverIdValue.trim(),
       quantity,
       department,
       issuedAt: new Date(issuedAt).toISOString(),
       issuedByName: issuedByName.trim(),
       issuedById: issuedById.trim(),
+      issuerTitle,
       remark: remark.trim() || undefined,
       warehouse,
       withdrawReceiptNo: withdrawReceiptNo.trim() || undefined,
@@ -177,6 +192,7 @@ export function IssueFormModal({
     // Save issuer details locally for user convenience on next transaction
     localStorage.setItem('last_issuer_name', issuedByName.trim());
     localStorage.setItem('last_issuer_id', issuedById.trim());
+    localStorage.setItem('last_issuer_title', issuerTitle);
 
     onClose();
   };
@@ -363,7 +379,7 @@ export function IssueFormModal({
                 value={issuedTo}
                 onChange={(e) => setIssuedTo(e.target.value)}
                 className="w-full text-sm border border-slate-800 rounded-lg px-3 py-2 focus:ring-2 focus:ring-red-500/20 focus:border-red-500 outline-none bg-slate-950 text-slate-100 font-semibold"
-                placeholder="e.g. Rajesh Kumar (Electrician)"
+                placeholder="e.g. Rajesh Kumar"
               />
             </div>
 
@@ -430,6 +446,37 @@ export function IssueFormModal({
             </div>
           </div>
 
+          {/* Receiver ID / Mobile No Option Dropdown */}
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-xs font-bold text-slate-400 uppercase mb-1">Receiver ID / Mobile Option *</label>
+              <select
+                value={receiverIdType}
+                onChange={(e) => {
+                  setReceiverIdType(e.target.value as 'ID' | 'Mobile No');
+                  setReceiverIdValue('');
+                }}
+                className="w-full text-sm border border-slate-800 rounded-lg px-3 py-2 bg-slate-950 text-slate-200 font-semibold outline-none focus:ring-2 focus:ring-red-500/20 focus:border-red-500"
+              >
+                <option value="ID" style={{ color: '#fbbf24', backgroundColor: '#090d16' }}>🆔 Employee ID</option>
+                <option value="Mobile No" style={{ color: '#fbbf24', backgroundColor: '#090d16' }}>📱 Mobile No.</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold text-slate-400 uppercase mb-1">
+                Receiver {receiverIdType === 'ID' ? 'Employee ID' : 'Mobile Number'} *
+              </label>
+              <input 
+                type="text" 
+                value={receiverIdValue}
+                onChange={(e) => setReceiverIdValue(e.target.value)}
+                className="w-full text-sm border border-slate-800 rounded-lg px-3 py-2 focus:ring-2 focus:ring-red-500/20 focus:border-red-500 outline-none bg-slate-950 text-slate-100 font-semibold"
+                placeholder={receiverIdType === 'ID' ? 'e.g. EMP-992' : 'e.g. +966 50 123 4567'}
+              />
+            </div>
+          </div>
+
           {/* Reference Document Identifiers */}
           <div className="bg-slate-950/30 p-4 rounded-xl space-y-3 border border-white/5 text-xs text-slate-300">
             <h4 className="font-bold text-slate-200 flex items-center gap-1">
@@ -467,8 +514,8 @@ export function IssueFormModal({
               Issuer Credentials (Released By)
             </h4>
             
-            <div className="grid grid-cols-2 gap-3">
-              <div>
+            <div className="grid grid-cols-3 gap-3">
+              <div className="col-span-1">
                 <label className="block text-[10px] uppercase font-semibold text-slate-400 mb-1">Issuer Name *</label>
                 <input 
                   type="text" 
@@ -479,7 +526,20 @@ export function IssueFormModal({
                 />
               </div>
 
-              <div>
+              <div className="col-span-1">
+                <label className="block text-[10px] uppercase font-semibold text-slate-400 mb-1">Issuer Title *</label>
+                <select 
+                  value={issuerTitle}
+                  onChange={(e) => setIssuerTitle(e.target.value)}
+                  className="w-full text-sm border border-slate-800 bg-slate-950 text-amber-400 font-bold rounded-lg px-3 py-1.5 focus:border-red-500 focus:ring-2 focus:ring-red-500/20 outline-none"
+                >
+                  <option value="Manager" style={{ backgroundColor: '#090d16' }}>Manager</option>
+                  <option value="Supervisor" style={{ backgroundColor: '#090d16' }}>Supervisor</option>
+                  <option value="Incharge" style={{ backgroundColor: '#090d16' }}>Incharge</option>
+                </select>
+              </div>
+
+              <div className="col-span-1">
                 <label className="block text-[10px] uppercase font-semibold text-slate-400 mb-1">Issuer Employee ID *</label>
                 <input 
                   type="text" 

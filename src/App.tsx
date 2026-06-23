@@ -1413,11 +1413,18 @@ export default function App() {
                             </div>
                           </td>
                           <td className="py-3 px-6 font-bold text-slate-200">
-                            <div className="flex flex-wrap items-center gap-1.5">
-                              <span>{is.issuedTo}</span>
-                              <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[8px] font-black uppercase tracking-wider bg-violet-500/20 text-violet-300 border border-violet-500/30">
-                                {is.department || 'Civil'}
-                              </span>
+                            <div className="flex flex-col gap-0.5">
+                              <div className="flex flex-wrap items-center gap-1.5">
+                                <span>{is.issuedTo}</span>
+                                <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[8px] font-black uppercase tracking-wider bg-violet-500/20 text-violet-300 border border-violet-500/30">
+                                  {is.department || 'Civil'}
+                                </span>
+                              </div>
+                              {is.receiverIdValue && (
+                                <span className="text-[10px] text-slate-400 font-normal mt-0.5">
+                                  {is.receiverIdType === 'Mobile No' ? '📞 Mobile:' : '🆔 ID:'} <span className="font-semibold text-slate-300">{is.receiverIdValue}</span>
+                                </span>
+                              )}
                             </div>
                           </td>
                           <td className="py-3 px-6 text-center bg-red-500/5">
@@ -1429,7 +1436,9 @@ export default function App() {
                             {new Date(is.issuedAt).toLocaleString('en-US')}
                           </td>
                           <td className="py-3 px-6 text-slate-300">
-                            <div className="text-slate-100 font-bold">{is.issuedByName}</div>
+                            <div className="text-slate-100 font-bold">
+                              {is.issuedByName} {is.issuerTitle ? `(${is.issuerTitle})` : ''}
+                            </div>
                             <div className="text-[10px] font-mono text-slate-400">ID: {is.issuedById}</div>
                             <div className="text-[10px] font-mono text-amber-400 font-bold mt-1">🏬 {is.warehouse || 'Main Warehouse'}</div>
                           </td>
@@ -1707,6 +1716,8 @@ export default function App() {
         allItems={items}
         departments={departments}
         onAddDepartment={handleAddDepartment}
+        warehouses={warehouses}
+        onAddWarehouse={handleAddWarehouse}
       />
 
       <IssueFormModal

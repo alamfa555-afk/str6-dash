@@ -10,6 +10,8 @@ interface ItemFormProps {
   allItems: InventoryItem[];
   departments: string[];
   onAddDepartment?: (name: string) => Promise<void>;
+  warehouses: string[];
+  onAddWarehouse?: (name: string) => Promise<void>;
 }
 
 const UNITS: UnitType[] = ['kg', 'pcs', 'box', 'ltr', 'mtr', 'roll', 'sheet', 'ho'];
@@ -21,9 +23,13 @@ export function ItemFormModal({
   existingItem, 
   allItems,
   departments,
-  onAddDepartment
+  onAddDepartment,
+  warehouses,
+  onAddWarehouse
 }: ItemFormProps) {
   const [itemCode, setItemCode] = useState('');
+  const [invNo, setInvNo] = useState('');
+  const [warehouse, setWarehouse] = useState('Main Warehouse');
   const [description, setDescription] = useState('');
   const [unit, setUnit] = useState<UnitType>('pcs');
   const [qty, setQty] = useState<number>(0);
@@ -34,6 +40,10 @@ export function ItemFormModal({
   // Custom tracking for adding department dynamically inside the form
   const [showAddDeptForm, setShowAddDeptForm] = useState(false);
   const [newDeptName, setNewDeptName] = useState('');
+
+  // Inline warehouse additions
+  const [showAddWarehouseForm, setShowAddWarehouseForm] = useState(false);
+  const [newWarehouseName, setNewWarehouseName] = useState('');
   
   // Custom tracking for damage, reject, expired
   const [damagedQty, setDamagedQty] = useState<number>(0);
@@ -101,6 +111,8 @@ export function ItemFormModal({
   useEffect(() => {
     if (existingItem) {
       setItemCode(existingItem.itemCode);
+      setInvNo(existingItem.invNo || '');
+      setWarehouse(existingItem.warehouse || 'Main Warehouse');
       setDescription(existingItem.description);
       setUnit(existingItem.unit);
       setQty(existingItem.initialQty);
@@ -117,6 +129,8 @@ export function ItemFormModal({
       // Clear fields for new item, auto-generate next code
       const nextNum = allItems.length + 1001;
       setItemCode(`INV-${nextNum}`);
+      setInvNo('');
+      setWarehouse('Main Warehouse');
       setDescription('');
       setUnit('pcs');
       setQty(0);
@@ -177,6 +191,8 @@ export function ItemFormModal({
     onSave({
       id: existingItem?.id,
       itemCode: trimmedCode,
+      invNo: invNo.trim() || undefined,
+      warehouse,
       description: description.trim(),
       unit,
       initialQty: qty,
@@ -237,11 +253,86 @@ export function ItemFormModal({
             </div>
 
             <div>
+              <label className="block text-xs font-bold text-slate-600 uppercase mb-1">INV No. (Invoice / Serial)</label>
+              <input 
+                type="text" 
+                value={invNo}
+                onChange={(e) => setInvNo(e.target.value)}
+                className="w-full text-sm border border-slate-200 rounded-lg px-3 py-2 focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none bg-white text-slate-950 font-semibold"
+                placeholder="e.g. INV-9980"
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <div className="flex justify-between items-center mb-1">
+                <label className="block text-xs font-bold text-slate-600 uppercase">Select Warehouse *</label>
+                {onAddWarehouse && (
+                  <button
+                    type="button"
+                    onClick={() => setShowAddWarehouseForm(!showAddWarehouseForm)}
+                    className="text-[10px] text-emerald-600 hover:text-emerald-700 font-extrabold flex items-center gap-0.5 focus:outline-none"
+                  >
+                    <Plus size={10} strokeWidth={3} /> {showAddWarehouseForm ? "Cancel" : "Add New"}
+                  </button>
+                )}
+              </div>
+
+              {showAddWarehouseForm ? (
+                <div className="flex gap-1.5 animate-in fade-in duration-200">
+                  <input
+                    type="text"
+                    value={newWarehouseName}
+                    onChange={(e) => setNewWarehouseName(e.target.value)}
+                    placeholder="e.g. Yard B Store"
+                    className="flex-1 text-xs border border-slate-200 rounded-lg px-2.5 py-2 focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none bg-white text-slate-950 font-semibold"
+                  />
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      if (newWarehouseName.trim() && onAddWarehouse) {
+                        try {
+                          await onAddWarehouse(newWarehouseName.trim());
+                          setWarehouse(newWarehouseName.trim());
+                          setNewWarehouseName('');
+                          setShowAddWarehouseForm(false);
+                        } catch (err) {
+                          console.error("Failed to add warehouse:", err);
+                        }
+                      }
+                    }}
+                    className="px-3 py-2 bg-emerald-500 hover:bg-emerald-600 text-white font-bold text-xs rounded-lg transition-all"
+                  >
+                    Save
+                  </button>
+                </div>
+              ) : (
+                <select
+                  value={warehouse}
+                  onChange={(e) => setWarehouse(e.target.value)}
+                  className="w-full text-sm border border-slate-205 rounded-lg px-3 py-2.5 bg-white text-slate-955 font-bold focus:ring-2 focus:ring-emerald-500/20"
+                >
+                  {warehouses.map((wh) => (
+                    <option 
+                      key={wh} 
+                      value={wh} 
+                      className="bg-white text-slate-950 font-semibold"
+                      style={{ color: '#0f172a', backgroundColor: '#ffffff' }}
+                    >
+                      🏢 {wh}
+                    </option>
+                  ))}
+                </select>
+              )}
+            </div>
+
+            <div>
               <label className="block text-xs font-bold text-slate-600 uppercase mb-1">Unit Type * (Dropdown)</label>
               <select
                 value={unit}
                 onChange={(e) => setUnit(e.target.value as UnitType)}
-                className="w-full text-sm border border-slate-200 rounded-lg px-3 py-2.5 focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none bg-white text-slate-950 font-bold"
+                className="w-full text-sm border border-slate-200 rounded-lg px-3 py-2.5 focus:ring-1 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none bg-white text-slate-950 font-bold"
               >
                 {UNITS.map((u) => (
                   <option 
