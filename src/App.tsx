@@ -277,6 +277,7 @@ export default function App() {
   };
 
   // 2. Automated Quantity Stock Balance calculation for relative items
+  // 2. Automated Quantity Stock Balance calculation for relative items
   // Real-time Current Stock = Initial Opening Qty + Sum(Receives) - Sum(Issues) - Damaged - Rejected - Expired (by Warehouse if specified)
   const getCurrentStock = (itemCode: string, warehouseFilter?: string): number => {
     const parent = items.find((it) => it.itemCode === itemCode);
@@ -290,11 +291,13 @@ export default function App() {
       .filter((i) => i.itemCode === itemCode && (!warehouseFilter || warehouseFilter === 'all' || i.warehouse === warehouseFilter))
       .reduce((sum, i) => sum + i.quantity, 0);
 
-    const isMainOrAll = !warehouseFilter || warehouseFilter === 'all' || warehouseFilter === 'Main Warehouse';
-    const initQty = isMainOrAll ? parent.initialQty : 0;
-    const dmg = isMainOrAll ? (parent.damagedQty || 0) : 0;
-    const rej = isMainOrAll ? (parent.rejectedQty || 0) : 0;
-    const exp = isMainOrAll ? (parent.expiredQty || 0) : 0;
+    const itemWarehouse = parent.warehouse || 'Main Warehouse';
+    const isMatchingWarehouse = !warehouseFilter || warehouseFilter === 'all' || warehouseFilter === itemWarehouse;
+
+    const initQty = isMatchingWarehouse ? parent.initialQty : 0;
+    const dmg = isMatchingWarehouse ? (parent.damagedQty || 0) : 0;
+    const rej = isMatchingWarehouse ? (parent.rejectedQty || 0) : 0;
+    const exp = isMatchingWarehouse ? (parent.expiredQty || 0) : 0;
 
     return Math.max(0, initQty + totalRcv - totalIsd - dmg - rej - exp);
   };
@@ -308,6 +311,8 @@ export default function App() {
         const updatedItem: InventoryItem = {
           id: itemData.id,
           itemCode: itemData.itemCode,
+          invNo: itemData.invNo,
+          warehouse: itemData.warehouse || 'Main Warehouse',
           description: itemData.description,
           unit: itemData.unit,
           initialQty: itemData.initialQty,
@@ -327,6 +332,8 @@ export default function App() {
         const newItem: InventoryItem = {
           id: `item-${Date.now()}`,
           itemCode: itemData.itemCode,
+          invNo: itemData.invNo,
+          warehouse: itemData.warehouse || 'Main Warehouse',
           description: itemData.description,
           unit: itemData.unit,
           initialQty: itemData.initialQty,
@@ -442,14 +449,14 @@ export default function App() {
       } else if (filterStockStatus === 'out') {
         matchesStock = stockVal === 0;
       } else if (filterStockStatus === 'damaged') {
-        const isMainOrAll = selectedWarehouseFilter === 'all' || selectedWarehouseFilter === 'Main Warehouse';
-        matchesStock = isMainOrAll ? ((item.damagedQty || 0) > 0) : false;
+        const isTargetOrAll = selectedWarehouseFilter === 'all' || selectedWarehouseFilter === (item.warehouse || 'Main Warehouse');
+        matchesStock = isTargetOrAll ? ((item.damagedQty || 0) > 0) : false;
       } else if (filterStockStatus === 'rejected') {
-        const isMainOrAll = selectedWarehouseFilter === 'all' || selectedWarehouseFilter === 'Main Warehouse';
-        matchesStock = isMainOrAll ? ((item.rejectedQty || 0) > 0) : false;
+        const isTargetOrAll = selectedWarehouseFilter === 'all' || selectedWarehouseFilter === (item.warehouse || 'Main Warehouse');
+        matchesStock = isTargetOrAll ? ((item.rejectedQty || 0) > 0) : false;
       } else if (filterStockStatus === 'expired') {
-        const isMainOrAll = selectedWarehouseFilter === 'all' || selectedWarehouseFilter === 'Main Warehouse';
-        matchesStock = isMainOrAll ? ((item.expiredQty || 0) > 0) : false;
+        const isTargetOrAll = selectedWarehouseFilter === 'all' || selectedWarehouseFilter === (item.warehouse || 'Main Warehouse');
+        matchesStock = isTargetOrAll ? ((item.expiredQty || 0) > 0) : false;
       }
 
       // Warehouse Relevance: only show items with balance or activity in this warehouse
@@ -457,8 +464,8 @@ export default function App() {
       if (selectedWarehouseFilter && selectedWarehouseFilter !== 'all') {
         const hasReceiveInWarehouse = receives.some((r) => r.itemCode === item.itemCode && r.warehouse === selectedWarehouseFilter);
         const hasIssueInWarehouse = issues.some((i) => i.itemCode === item.itemCode && i.warehouse === selectedWarehouseFilter);
-        const isMain = selectedWarehouseFilter === 'Main Warehouse';
-        const hasInitialQty = isMain && (item.initialQty > 0);
+        const isTargetWarehouse = selectedWarehouseFilter === (item.warehouse || 'Main Warehouse');
+        const hasInitialQty = isTargetWarehouse && (item.initialQty > 0);
 
         matchesWarehouse = stockVal > 0 || hasReceiveInWarehouse || hasIssueInWarehouse || hasInitialQty;
       }
@@ -1239,6 +1246,18 @@ export default function App() {
                                 </span>
                               </p>
 
+                              {/* Warehouse and INV display */}
+                              <div className="flex flex-wrap gap-2 mt-1">
+                                {item.invNo && (
+                                  <span className="text-[10px] text-indigo-300 font-mono bg-indigo-500/10 border border-indigo-500/20 px-1.5 py-0.5 rounded">
+                                    📄 INV: {item.invNo}
+                                  </span>
+                                )}
+                                <span className="text-[10px] text-amber-300 font-medium bg-amber-500/10 border border-amber-500/20 px-1.5 py-0.5 rounded flex items-center gap-1">
+                                  🏢 {item.warehouse || 'Main Warehouse'}
+                                </span>
+                              </div>
+
                               {/* Supplier Space display */}
                               {item.supplierName && (
                                 <div className="text-[10px] text-slate-400 font-medium flex flex-wrap items-center gap-1 mt-1 bg-white/5 py-0.5 px-1.5 rounded w-max border border-white/5">
@@ -1286,7 +1305,7 @@ export default function App() {
                             SAR {item.pricePerUnit.toFixed(2)}
                           </td>
                           <td className="py-3 px-6 text-center font-mono text-slate-400 bg-white/5">
-                            {(!selectedWarehouseFilter || selectedWarehouseFilter === 'all' || selectedWarehouseFilter === 'Main Warehouse') ? item.initialQty : 0}
+                            {(!selectedWarehouseFilter || selectedWarehouseFilter === 'all' || selectedWarehouseFilter === (item.warehouse || 'Main Warehouse')) ? item.initialQty : 0}
                           </td>
                           <td className="py-3 px-6 text-center bg-white/10">
                             <span className={`px-3 py-1.5 rounded-xl font-black font-mono text-sm ${
