@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { InventoryItem, IssueTransaction, ReceiveTransaction } from '../types';
 import { X, FileText, Download, Calendar, Tag, User, CheckCircle2, ExternalLink } from 'lucide-react';
 import { generateInventoryPDF } from '../utils/pdfGenerator';
@@ -9,13 +9,32 @@ interface PDFReportModalProps {
   items: InventoryItem[];
   issues: IssueTransaction[];
   receives: ReceiveTransaction[];
+  selectedWarehouseFilter?: string;
+  warehouses?: string[];
 }
 
-export function PDFReportHubModal({ isOpen, onClose, items, issues, receives }: PDFReportModalProps) {
+export function PDFReportHubModal({
+  isOpen,
+  onClose,
+  items,
+  issues,
+  receives,
+  selectedWarehouseFilter = 'all',
+  warehouses = []
+}: PDFReportModalProps) {
   const [reportType, setReportType] = useState<'daily' | 'weekly' | 'monthly' | 'all'>('all');
   const [selectedItemCode, setSelectedItemCode] = useState('all');
+  const [warehouseFilter, setWarehouseFilter] = useState(selectedWarehouseFilter);
   const [generatedBy, setGeneratedBy] = useState('');
   const [pdfResult, setPdfResult] = useState<{ blobURL: string; filename: string } | null>(null);
+
+  // Sync warehouse selection with active dashboard filter whenever the modal is opened
+  useEffect(() => {
+    if (isOpen) {
+      setWarehouseFilter(selectedWarehouseFilter);
+      setPdfResult(null); // Reset last preview
+    }
+  }, [isOpen, selectedWarehouseFilter]);
 
   if (!isOpen) return null;
 
@@ -30,6 +49,7 @@ export function PDFReportHubModal({ isOpen, onClose, items, issues, receives }: 
       issues,
       receives,
       generatedBy: userName,
+      selectedWarehouseFilter: warehouseFilter,
     });
 
     setPdfResult({
@@ -125,11 +145,37 @@ export function PDFReportHubModal({ isOpen, onClose, items, issues, receives }: 
               </select>
             </div>
 
+            {/* Warehouse Filter Selector */}
+            <div>
+              <label className="text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1.5 mb-2">
+                <svg className="w-3.5 h-3.5 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                </svg>
+                3. Filter Warehouse / Location
+              </label>
+              <button
+                type="button"
+                className="hidden" // Placeholder for screenReaders/accessibility
+              />
+              <select
+                value={warehouseFilter}
+                onChange={(e) => setWarehouseFilter(e.target.value)}
+                className="w-full text-sm border border-slate-200 rounded-lg px-3 py-2 bg-slate-50 font-bold text-slate-900 outline-none focus:bg-white focus:ring-2 focus:ring-sky-500/20"
+              >
+                <option value="all" className="font-semibold">🏢 All Warehouses / Locations</option>
+                {warehouses.map((wh) => (
+                  <option key={wh} value={wh} className="font-semibold text-slate-900">
+                    📍 {wh}
+                  </option>
+                ))}
+              </select>
+            </div>
+
             {/* Signature/Name */}
             <div>
               <label className="text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1.5 mb-1">
                 <User size={13} className="text-slate-400" />
-                3. Certified Operator Name (Optional)
+                4. Certified Operator Name (Optional)
               </label>
               <input
                 type="text"

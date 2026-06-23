@@ -28,16 +28,18 @@ export function StatsGrid({
   const getItemStock = (item: InventoryItem) => {
     const rx = receives
       .filter((r) => r.itemCode === item.itemCode && (selectedWarehouseFilter === 'all' || r.warehouse === selectedWarehouseFilter))
-      .reduce((s, r) => s + r.quantity, 0);
+      .reduce((s, r) => s + Number(r.quantity || 0), 0);
     const tx = issues
       .filter((i) => i.itemCode === item.itemCode && (selectedWarehouseFilter === 'all' || i.warehouse === selectedWarehouseFilter))
-      .reduce((s, i) => s + i.quantity, 0);
+      .reduce((s, i) => s + Number(i.quantity || 0), 0);
     
-    const isMainOrAll = selectedWarehouseFilter === 'all' || selectedWarehouseFilter === 'Main Warehouse';
-    const initQty = isMainOrAll ? item.initialQty : 0;
-    const dmg = isMainOrAll ? (item.damagedQty || 0) : 0;
-    const rej = isMainOrAll ? (item.rejectedQty || 0) : 0;
-    const exp = isMainOrAll ? (item.expiredQty || 0) : 0;
+    const itemWarehouse = item.warehouse || 'Main Warehouse';
+    const isMatchingWarehouse = selectedWarehouseFilter === 'all' || selectedWarehouseFilter === itemWarehouse;
+    
+    const initQty = isMatchingWarehouse ? Number(item.initialQty || 0) : 0;
+    const dmg = isMatchingWarehouse ? Number(item.damagedQty || 0) : 0;
+    const rej = isMatchingWarehouse ? Number(item.rejectedQty || 0) : 0;
+    const exp = isMatchingWarehouse ? Number(item.expiredQty || 0) : 0;
     
     return Math.max(0, initQty + rx - tx - dmg - rej - exp);
   };
@@ -56,10 +58,11 @@ export function StatsGrid({
     totalStockUnits += qty;
     totalStockValue += (qty * item.pricePerUnit);
 
-    const isMainOrAll = selectedWarehouseFilter === 'all' || selectedWarehouseFilter === 'Main Warehouse';
-    totalDamagedUnits += isMainOrAll ? (item.damagedQty || 0) : 0;
-    totalRejectedUnits += isMainOrAll ? (item.rejectedQty || 0) : 0;
-    totalExpiredUnits += isMainOrAll ? (item.expiredQty || 0) : 0;
+    const itemWarehouse = item.warehouse || 'Main Warehouse';
+    const isMatchingWarehouse = selectedWarehouseFilter === 'all' || selectedWarehouseFilter === itemWarehouse;
+    totalDamagedUnits += isMatchingWarehouse ? Number(item.damagedQty || 0) : 0;
+    totalRejectedUnits += isMatchingWarehouse ? Number(item.rejectedQty || 0) : 0;
+    totalExpiredUnits += isMatchingWarehouse ? Number(item.expiredQty || 0) : 0;
 
     if (qty === 0) {
       outOfStockCount++;

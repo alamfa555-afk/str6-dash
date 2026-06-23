@@ -285,19 +285,19 @@ export default function App() {
 
     const totalRcv = receives
       .filter((r) => r.itemCode === itemCode && (!warehouseFilter || warehouseFilter === 'all' || r.warehouse === warehouseFilter))
-      .reduce((sum, r) => sum + r.quantity, 0);
+      .reduce((sum, r) => sum + Number(r.quantity || 0), 0);
 
     const totalIsd = issues
       .filter((i) => i.itemCode === itemCode && (!warehouseFilter || warehouseFilter === 'all' || i.warehouse === warehouseFilter))
-      .reduce((sum, i) => sum + i.quantity, 0);
+      .reduce((sum, i) => sum + Number(i.quantity || 0), 0);
 
     const itemWarehouse = parent.warehouse || 'Main Warehouse';
     const isMatchingWarehouse = !warehouseFilter || warehouseFilter === 'all' || warehouseFilter === itemWarehouse;
 
-    const initQty = isMatchingWarehouse ? parent.initialQty : 0;
-    const dmg = isMatchingWarehouse ? (parent.damagedQty || 0) : 0;
-    const rej = isMatchingWarehouse ? (parent.rejectedQty || 0) : 0;
-    const exp = isMatchingWarehouse ? (parent.expiredQty || 0) : 0;
+    const initQty = isMatchingWarehouse ? Number(parent.initialQty || 0) : 0;
+    const dmg = isMatchingWarehouse ? Number(parent.damagedQty || 0) : 0;
+    const rej = isMatchingWarehouse ? Number(parent.rejectedQty || 0) : 0;
+    const exp = isMatchingWarehouse ? Number(parent.expiredQty || 0) : 0;
 
     return Math.max(0, initQty + totalRcv - totalIsd - dmg - rej - exp);
   };
@@ -1766,6 +1766,8 @@ export default function App() {
         items={items}
         issues={issues}
         receives={receives}
+        selectedWarehouseFilter={selectedWarehouseFilter}
+        warehouses={warehouses}
       />
     </div>
   );
