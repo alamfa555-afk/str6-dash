@@ -452,7 +452,18 @@ export default function App() {
         matchesStock = isMainOrAll ? ((item.expiredQty || 0) > 0) : false;
       }
 
-      return matchesSearch && matchesUnit && matchesStock && matchesDept;
+      // Warehouse Relevance: only show items with balance or activity in this warehouse
+      let matchesWarehouse = true;
+      if (selectedWarehouseFilter && selectedWarehouseFilter !== 'all') {
+        const hasReceiveInWarehouse = receives.some((r) => r.itemCode === item.itemCode && r.warehouse === selectedWarehouseFilter);
+        const hasIssueInWarehouse = issues.some((i) => i.itemCode === item.itemCode && i.warehouse === selectedWarehouseFilter);
+        const isMain = selectedWarehouseFilter === 'Main Warehouse';
+        const hasInitialQty = isMain && (item.initialQty > 0);
+
+        matchesWarehouse = stockVal > 0 || hasReceiveInWarehouse || hasIssueInWarehouse || hasInitialQty;
+      }
+
+      return matchesSearch && matchesUnit && matchesStock && matchesDept && matchesWarehouse;
     });
   }, [items, searchTerm, filterUnit, filterStockStatus, filterDepartment, selectedWarehouseFilter, issues, receives]);
 
@@ -1198,7 +1209,7 @@ export default function App() {
                     </tr>
                   ) : (
                     filteredItemsList.map((item, index) => {
-                      const computedStock = getCurrentStock(item.itemCode);
+                      const computedStock = getCurrentStock(item.itemCode, selectedWarehouseFilter);
                       const isOutOfStock = computedStock === 0;
                       const isLowStock = computedStock > 0 && computedStock <= 10;
                       const totalValuation = computedStock * item.pricePerUnit;
@@ -1275,7 +1286,7 @@ export default function App() {
                             SAR {item.pricePerUnit.toFixed(2)}
                           </td>
                           <td className="py-3 px-6 text-center font-mono text-slate-400 bg-white/5">
-                            {item.initialQty}
+                            {(!selectedWarehouseFilter || selectedWarehouseFilter === 'all' || selectedWarehouseFilter === 'Main Warehouse') ? item.initialQty : 0}
                           </td>
                           <td className="py-3 px-6 text-center bg-white/10">
                             <span className={`px-3 py-1.5 rounded-xl font-black font-mono text-sm ${
