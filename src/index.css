@@ -1,62 +1,56 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700;800&family=Space+Grotesk:wght@400;500;600;700&display=swap');
 @import "tailwindcss";
 
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap');
+
 @theme {
-  --font-sans: "Space Grotesk", "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Space Grotesk", ui-sans-serif, system-ui, sans-serif;
   --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
 }
 
-/* Custom Cosmic Shadows & Glass Controls */
-.galaxy-glass {
-  background: rgba(15, 23, 42, 0.7);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+@layer utilities {
+  .animate-fade-in {
+    animation: fadeIn 0.2s ease-out forwards;
+  }
 }
 
-.galaxy-glass-hover:hover {
-  background: rgba(30, 41, 59, 0.85);
-  border-color: rgba(242, 114, 21, 0.3);
-  box-shadow: 0 0 20px rgba(242, 114, 21, 0.15);
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
-.glow-orange {
-  box-shadow: 0 0 20px rgba(242, 114, 21, 0.35);
-}
+/* Beautiful media print styles for high-fidelity formal Letterhead PDF */
+@media print {
+  body {
+    background-color: white !important;
+    background-image: none !important;
+    color: black !important;
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+  
+  /* Hide all interactive app elements */
+  .non-printable {
+    display: none !important;
+  }
 
-.glow-purple {
-  box-shadow: 0 0 25px rgba(124, 58, 237, 0.3);
+  /* Show and format print template explicitly */
+  .printing-template {
+    display: block !important;
+    position: absolute !important;
+    top: 0 !important;
+    left: 0 !important;
+    width: 100% !important;
+    margin: 0 !important;
+    padding: 15mm !important;
+    font-size: 11px !important;
+    line-height: 1.4 !important;
+    background-color: white !important;
+    color: black !important;
+  }
+  
+  @page {
+    size: A4 portrait;
+    margin: 0;
+  }
 }
-
-.glow-indigo {
-  box-shadow: 0 0 25px rgba(99, 102, 241, 0.3);
-}
-
-.glow-emerald {
-  box-shadow: 0 0 25px rgba(16, 185, 129, 0.25);
-}
-
-.neon-text-orange {
-  text-shadow: 0 0 8px rgba(242, 114, 21, 0.5);
-}
-
-.neon-text-sky {
-  text-shadow: 0 0 10px rgba(14, 165, 233, 0.5);
-}
-
-/* Custom slow orbital space motion */
-@keyframes galaxy-spin {
-  0% { transform: rotate(0deg); }
-  50% { transform: scale(1.1); }
-  100% { transform: rotate(360deg); }
-}
-
-.animate-space-orbit {
-  animation: galaxy-spin 45s linear infinite;
-}
-
-body {
-  background-color: #030712;
-  color: #f3f4f6;
-}
-

@@ -1,59 +1,83 @@
-export type UnitType = 'kg' | 'pcs' | 'box' | 'ltr' | 'mtr' | 'roll' | 'sheet' | 'ho';
-
-export interface InventoryItem {
+export interface Site {
   id: string;
-  itemCode: string; // Unique Identifier, e.g., "INV-001"
-  invNo?: string; // Invoice / Inventory Serial No.
-  warehouse?: string; // Default Warehouse Location
-  description: string;
-  unit: UnitType;
-  initialQty: number; // Opening stock quantity
-  pricePerUnit: number;
-  department: string; // e.g. "Civil", "Electrical", "Plumbing", "Tools", "Safety"
-  remark: string;
+  name: string;
+  siteNo: string;
   createdAt: string;
-  damagedQty?: number;
-  rejectedQty?: number;
-  expiredQty?: number;
-  supplierName?: string;
-  supplierContact?: string;
 }
 
-export interface IssueTransaction {
-  id: string;
-  itemCode: string;
-  issuedTo: string; // Receiver/Recipient details
-  receiverIdType?: 'ID' | 'Mobile No';
-  receiverIdValue?: string;
-  quantity: number; // Issued quantity
-  department: string; // Department receiving the item
-  issuedAt: string; // Timestamp of issue (ISO date string)
-  issuedByName: string; // Name of person issuing the stock
-  issuedById: string; // Employee ID of person issuing the stock
-  issuerTitle?: string; // Manager, Supervisor, Incharge, etc.
-  remark?: string;
-  warehouse?: string; // Multi-warehouse location
-  withdrawReceiptNo?: string;
-  mdrNo?: string;
+export type ElementStatus = 'good' | 'damage' | 'reject';
+
+export interface UnloadingDetails {
+  unloaderId: string;
+  unloaderName: string;
+  unloaderTitle: string;
+  equipmentType: string; // mobile crane, crawler crane, forklift, manlift, etc.
+  capacity: number; // in Tons
+  equipmentPlateNo: string;
+  operatorName: string;
+  operatorId: string;
 }
 
-export interface ReceiveTransaction {
+export interface ErectionDetails {
+  erectorId: string;
+  erectorName: string;
+  erectorTitle: string;
+  equipmentType: string;
+  capacity: number; // in Tons
+  equipmentPlateNo: string;
+  operatorName: string;
+  operatorId: string;
+}
+
+export interface Delivery {
   id: string;
-  itemCode: string;
+  siteId: string;
+  mdrNo: string;
+  elementCode: string;
+  elementType: string;
+  weight: number; // in Ton
   quantity: number;
-  receivedAt: string;
-  receivedByName: string;
-  receivedById: string;
-  remark?: string;
-  supplierName?: string;
-  pricePerUnit?: number;
-  warehouse?: string; // Multi-warehouse location
+  totalWeight: number; // weight * quantity
+  status: ElementStatus;
+  zone: string;
+  villaType: string;
+  buildingNo: string;
+  houseNo: string;
+  flatNo: string;
+  trailerNo?: string;
+  unloadingDetails: UnloadingDetails;
+  remarks?: string;
+  rejectionReason?: string;
+  createdAt: string;
+  updatedAt: string;
+  recordedBy: string;
 }
 
-export interface DashboardStats {
-  totalItems: number;
-  totalStockValue: number;
-  lowStockItemsCount: number;
-  outOfStockItemsCount: number;
-  totalIssuesToday: number;
+export interface Erection {
+  id: string;
+  siteId: string;
+  elementCode: string;
+  elementType: string;
+  weight: number; // in Ton
+  quantity: number;
+  totalWeight: number; // weight * quantity
+  status: ElementStatus;
+  zone: string;
+  villaType: string;
+  buildingNo: string;
+  houseNo: string;
+  flatNo: string;
+  erectionDetails: ErectionDetails;
+  remarks?: string;
+  rejectionReason?: string;
+  createdAt: string;
+  updatedAt: string;
+  recordedBy: string;
+}
+
+export interface Suggestion {
+  id: string;
+  fieldName: string;
+  value: string;
+  createdAt: string;
 }

@@ -1,332 +1,124 @@
-import { InventoryItem, IssueTransaction, ReceiveTransaction } from '../types';
-import { Package, AlertTriangle, HelpCircle, ArrowUpRight, TrendingUp, AlertCircle, Layers, Ban, CalendarRange, Trash2 } from 'lucide-react';
+import React from "react";
+import { Download, Construction, AlertTriangle, Boxes } from "lucide-react";
+import { Delivery, Erection } from "../types";
 
-interface StatsProps {
-  items: InventoryItem[];
-  issues: IssueTransaction[];
-  receives: ReceiveTransaction[];
-  selectedWarehouseFilter?: string; // Multi-warehouse filter
-  onLowStockClick?: () => void;
-  onOutOfStockClick?: () => void;
-  onDamagedStockClick?: () => void;
-  onRejectedStockClick?: () => void;
-  onExpiredStockClick?: () => void;
+interface StatsGridProps {
+  deliveries: Delivery[];
+  erections: Erection[];
 }
 
-export function StatsGrid({ 
-  items, 
-  issues, 
-  receives, 
-  selectedWarehouseFilter = 'all',
-  onLowStockClick, 
-  onOutOfStockClick,
-  onDamagedStockClick,
-  onRejectedStockClick,
-  onExpiredStockClick
-}: StatsProps) {
-  // Helper to calculate total real stock of an item
-  const getItemStock = (item: InventoryItem) => {
-    const rx = receives
-      .filter((r) => r.itemCode === item.itemCode && (selectedWarehouseFilter === 'all' || r.warehouse === selectedWarehouseFilter))
-      .reduce((s, r) => s + Number(r.quantity || 0), 0);
-    const tx = issues
-      .filter((i) => i.itemCode === item.itemCode && (selectedWarehouseFilter === 'all' || i.warehouse === selectedWarehouseFilter))
-      .reduce((s, i) => s + Number(i.quantity || 0), 0);
-    
-    const itemWarehouse = item.warehouse || 'Main Warehouse';
-    const isMatchingWarehouse = selectedWarehouseFilter === 'all' || selectedWarehouseFilter === itemWarehouse;
-    
-    const initQty = isMatchingWarehouse ? Number(item.initialQty || 0) : 0;
-    const dmg = isMatchingWarehouse ? Number(item.damagedQty || 0) : 0;
-    const rej = isMatchingWarehouse ? Number(item.rejectedQty || 0) : 0;
-    const exp = isMatchingWarehouse ? Number(item.expiredQty || 0) : 0;
-    
-    return Math.max(0, initQty + rx - tx - dmg - rej - exp);
-  };
+export default function StatsGrid({ deliveries = [], erections = [] }: StatsGridProps) {
+  // Compute metrics
+  const totalReceivedCount = deliveries.reduce((sum, d) => sum + (d.quantity || 1), 0);
+  const totalReceivedWeight = deliveries.reduce((sum, d) => sum + (d.totalWeight || 0), 0);
 
-  let totalItemsCount = items.length;
-  let totalStockValue = 0;
-  let lowStockCount = 0;
-  let outOfStockCount = 0;
-  let totalStockUnits = 0;
-  let totalDamagedUnits = 0;
-  let totalRejectedUnits = 0;
-  let totalExpiredUnits = 0;
+  const totalErectedCount = erections.reduce((sum, e) => sum + (e.quantity || 1), 0);
+  const totalErectedWeight = erections.reduce((sum, e) => sum + (e.totalWeight || 0), 0);
 
-  items.forEach((item) => {
-    const qty = getItemStock(item);
-    totalStockUnits += qty;
-    totalStockValue += (qty * item.pricePerUnit);
+  // Balance sitting on site awaiting erection
+  const balanceCount = Math.max(0, totalReceivedCount - totalErectedCount);
+  const balanceWeight = Math.max(0, totalReceivedWeight - totalErectedWeight);
 
-    const itemWarehouse = item.warehouse || 'Main Warehouse';
-    const isMatchingWarehouse = selectedWarehouseFilter === 'all' || selectedWarehouseFilter === itemWarehouse;
-    totalDamagedUnits += isMatchingWarehouse ? Number(item.damagedQty || 0) : 0;
-    totalRejectedUnits += isMatchingWarehouse ? Number(item.rejectedQty || 0) : 0;
-    totalExpiredUnits += isMatchingWarehouse ? Number(item.expiredQty || 0) : 0;
+  // Quality concerns
+  const damagedReceived = deliveries.filter(d => d.status === "damage").reduce((sum, d) => sum + (d.quantity || 1), 0);
+  const rejectedReceived = deliveries.filter(d => d.status === "reject").reduce((sum, d) => sum + (d.quantity || 1), 0);
+  
+  const damagedErected = erections.filter(e => e.status === "damage").reduce((sum, e) => sum + (e.quantity || 1), 0);
+  const rejectedErected = erections.filter(e => e.status === "reject").reduce((sum, e) => sum + (e.quantity || 1), 0);
 
-    if (qty === 0) {
-      outOfStockCount++;
-    } else if (qty <= 10) {
-      lowStockCount++;
-    }
-  });
-
-  const totalReleasedCount = issues
-    .filter((i) => selectedWarehouseFilter === 'all' || i.warehouse === selectedWarehouseFilter)
-    .reduce((acc, current) => acc + current.quantity, 0);
+  const totalIssueCount = damagedReceived + rejectedReceived + damagedErected + rejectedErected;
 
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4">
-      {/* Dynamic Item Count Card */}
-      <div 
-        id="stats-total-items"
-        className="galaxy-glass rounded-2xl p-5 shadow-lg transition-all hover:scale-[1.02] hover:border-emerald-500/20 flex flex-col justify-between"
-      >
-        <div className="flex justify-between items-start">
-          <div>
-            <span className="text-[11px] font-extrabold uppercase tracking-wider text-slate-400">Total Registered Items</span>
-            <h3 className="text-3xl font-black font-sans text-white mt-1.5 neon-text-sky">{totalItemsCount}</h3>
+    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-5 max-w-7xl mx-auto mb-6">
+      {/* Received metric card */}
+      <div className="backdrop-blur-md bg-slate-900/60 border border-emerald-500/25 p-5 rounded-2xl shadow-xl hover:shadow-emerald-950/20 transition-all hover:translate-y-[-2px]">
+        <div className="flex justify-between items-start mb-3">
+          <div className="p-2.5 bg-emerald-500/10 rounded-xl text-emerald-400 border border-emerald-500/20">
+            <Download className="h-5 w-5" />
           </div>
-          <div className="p-3 bg-emerald-500/10 text-emerald-400 rounded-xl border border-emerald-500/25 glow-emerald">
-            <Package size={18} />
-          </div>
+          <span className="text-[10px] uppercase font-bold text-emerald-400 bg-emerald-500/10 px-2.5 py-1 rounded-full border border-emerald-500/20">
+            MDR Receipts
+          </span>
         </div>
-        <div className="text-[11px] text-slate-400 mt-4 border-t border-white/5 pt-2 flex items-center gap-1.5">
-          <span className="font-extrabold text-emerald-400">Active Catalog</span> Registered parts
+        <p className="text-xs font-semibold text-slate-400 uppercase tracking-widest">Total Received</p>
+        <div className="mt-1 flex items-baseline gap-1">
+          <span className="text-4xl font-black text-emerald-400 tracking-tight drop-shadow-[0_0_12px_rgba(16,185,129,0.2)]">
+            {totalReceivedCount}
+          </span>
+          <span className="text-sm text-emerald-300 font-bold">PCS</span>
         </div>
-      </div>
-
-      {/* Dynamic Total Stock Units Card */}
-      <div 
-        id="stats-total-stock-units"
-        className="galaxy-glass rounded-2xl p-5 shadow-lg transition-all hover:scale-[1.02] hover:border-indigo-500/20 flex flex-col justify-between"
-      >
-        <div className="flex justify-between items-start">
-          <div>
-            <span className="text-[11px] font-extrabold uppercase tracking-wider text-slate-400">Total All Item Stock</span>
-            <h3 className="text-3xl font-black font-sans text-white mt-1.5 neon-text-sky">{totalStockUnits}</h3>
-          </div>
-          <div className="p-3 bg-indigo-500/10 text-indigo-400 rounded-xl border border-indigo-500/25 glow-indigo">
-            <Layers size={18} />
-          </div>
-        </div>
-        <div className="text-[11px] text-slate-400 mt-4 border-t border-white/5 pt-2 flex items-center gap-1.5">
-          <span className="font-extrabold text-indigo-400">Available Qty</span> in warehouse
+        <div className="mt-3 text-xs text-slate-400 flex justify-between border-t border-slate-800/60 pt-2.5">
+          <span>Total Precast Weight:</span>
+          <span className="font-bold text-slate-200">{totalReceivedWeight.toFixed(2)} Tons</span>
         </div>
       </div>
 
-      {/* Dynamic Total Stock Value Card */}
-      <div 
-        id="stats-valuation"
-        className="galaxy-glass rounded-2xl p-5 shadow-lg transition-all hover:scale-[1.02] hover:border-amber-500/20 flex flex-col justify-between"
-      >
-        <div className="flex justify-between items-start">
-          <div>
-            <span className="text-[11px] font-extrabold uppercase tracking-wider text-slate-400">Net Stock Valuation (SAR)</span>
-            <h3 className="text-2xl font-black font-sans text-white mt-1.5 neon-text-orange">
-              SAR {totalStockValue.toLocaleString('en-US')}
-            </h3>
+      {/* Erected metric card */}
+      <div className="backdrop-blur-md bg-slate-900/60 border border-purple-500/25 p-5 rounded-2xl shadow-xl hover:shadow-purple-950/20 transition-all hover:translate-y-[-2px]">
+        <div className="flex justify-between items-start mb-3">
+          <div className="p-2.5 bg-purple-500/10 rounded-xl text-purple-400 border border-purple-500/20">
+            <Construction className="h-5 w-5" />
           </div>
-          <div className="p-3 bg-amber-500/10 text-amber-400 rounded-xl border border-amber-500/25 glow-orange">
-            <TrendingUp size={18} />
-          </div>
+          <span className="text-[10px] uppercase font-bold text-purple-400 bg-purple-500/10 px-2.5 py-1 rounded-full border border-purple-500/20">
+            Assembly Progress
+          </span>
         </div>
-        <div className="text-[11px] text-slate-400 mt-4 border-t border-white/5 pt-2 flex items-center gap-1.5">
-          <span className="font-extrabold text-amber-400">Liquid Valuation</span> active in store
+        <p className="text-xs font-semibold text-slate-400 uppercase tracking-widest">Total Erected</p>
+        <div className="mt-1 flex items-baseline gap-1">
+          <span className="text-4xl font-black text-purple-400 tracking-tight drop-shadow-[0_0_12px_rgba(168,85,247,0.2)]">
+            {totalErectedCount}
+          </span>
+          <span className="text-sm text-purple-300 font-bold">PCS</span>
         </div>
-      </div>
-
-      {/* Dynamic Low Stock Warning Card */}
-      <div 
-        id="stats-low-stock"
-        onClick={onLowStockClick}
-        className={`galaxy-glass rounded-2xl p-5 shadow-lg transition-all hover:scale-[1.04] active:scale-95 flex flex-col justify-between border cursor-pointer select-none ${
-          lowStockCount > 0 
-            ? 'border-amber-500/60 shadow-amber-500/10 shadow-lg hover:border-amber-400 bg-amber-500/[0.02]' 
-            : 'border-white/5 hover:border-white/10'
-        }`}
-        title="Click to view Low Stock summary and filter"
-      >
-        <div className="flex justify-between items-start">
-          <div>
-            <span className={`text-[11px] font-extrabold uppercase tracking-wider ${lowStockCount > 0 ? 'text-amber-400' : 'text-slate-400'}`}>
-              Low Stock Alert (≤10)
-            </span>
-            <h3 className="text-3xl font-black font-sans text-white mt-1.5">{lowStockCount}</h3>
-          </div>
-          <div className={`p-3 rounded-xl border ${lowStockCount > 0 ? 'bg-amber-500/20 text-amber-400 border-amber-500/30 animate-pulse' : 'bg-slate-500/10 text-slate-400 border-white/5'}`}>
-            <AlertTriangle size={18} />
-          </div>
-        </div>
-        <div className="text-[11px] mt-4 border-t border-white/5 pt-2 flex justify-between items-center">
-          {lowStockCount > 0 ? (
-            <span className="font-extrabold text-amber-400">Refill requested immediately</span>
-          ) : (
-            <span className="text-slate-400 font-medium">All levels healthy</span>
-          )}
-          <span className="text-[9px] text-amber-500/80 font-bold tracking-wider uppercase border border-amber-500/20 px-1 py-0.5 rounded bg-amber-500/5 hover:bg-amber-500/10">Click to View</span>
+        <div className="mt-3 text-xs text-slate-400 flex justify-between border-t border-slate-800/60 pt-2.5">
+          <span>Installed Weight:</span>
+          <span className="font-bold text-slate-200">{totalErectedWeight.toFixed(2)} Tons</span>
         </div>
       </div>
 
-      {/* Dynamic Out of Stock Card */}
-      <div 
-        id="stats-out-of-stock"
-        onClick={onOutOfStockClick}
-        className={`galaxy-glass rounded-2xl p-5 shadow-lg transition-all hover:scale-[1.04] active:scale-95 flex flex-col justify-between border cursor-pointer select-none ${
-          outOfStockCount > 0 
-            ? 'border-red-500/60 shadow-red-500/10 shadow-lg hover:border-red-400 bg-red-500/[0.02]' 
-            : 'border-white/5 hover:border-white/10'
-        }`}
-        title="Click to view Out of Stock summary and filter"
-      >
-        <div className="flex justify-between items-start">
-          <div>
-            <span className={`text-[11px] font-extrabold uppercase tracking-wider ${outOfStockCount > 0 ? 'text-red-400 font-black' : 'text-slate-400'}`}>
-              Not In Stock (Zero)
-            </span>
-            <h3 className="text-3xl font-black font-sans text-white mt-1.5">{outOfStockCount}</h3>
+      {/* Balance Sitting on site */}
+      <div className="backdrop-blur-md bg-slate-900/60 border border-amber-500/25 p-5 rounded-2xl shadow-xl hover:shadow-amber-950/20 transition-all hover:translate-y-[-2px]">
+        <div className="flex justify-between items-start mb-3">
+          <div className="p-2.5 bg-amber-500/10 rounded-xl text-amber-400 border border-amber-500/20">
+            <Boxes className="h-5 w-5" />
           </div>
-          <div className={`p-3 rounded-xl border ${outOfStockCount > 0 ? 'bg-red-500/20 text-red-400 border-red-500/30 font-bold' : 'bg-slate-500/10 text-slate-400 border-white/5'}`}>
-            <AlertCircle size={18} />
-          </div>
+          <span className="text-[10px] uppercase font-bold text-amber-400 bg-amber-500/10 px-2.5 py-1 rounded-full border border-amber-500/20">
+            On-Site Inventory
+          </span>
         </div>
-        <div className="text-[11px] mt-4 border-t border-white/5 pt-2 flex justify-between items-center">
-          {outOfStockCount > 0 ? (
-            <span className="font-extrabold text-red-400">Warning: Blocked releases</span>
-          ) : (
-            <span className="text-slate-400 font-medium">No empty columns</span>
-          )}
-          <span className="text-[9px] text-red-500/80 font-bold tracking-wider uppercase border border-red-500/20 px-1 py-0.5 rounded bg-red-500/5 hover:bg-red-500/10">Click to View</span>
+        <p className="text-xs font-semibold text-slate-400 uppercase tracking-widest">Awaiting Erection</p>
+        <div className="mt-1 flex items-baseline gap-1">
+          <span className="text-4xl font-black text-amber-400 tracking-tight drop-shadow-[0_0_12px_rgba(245,158,11,0.2)]">
+            {balanceCount}
+          </span>
+          <span className="text-sm text-amber-300 font-bold">PCS</span>
+        </div>
+        <div className="mt-3 text-xs text-slate-400 flex justify-between border-t border-slate-800/60 pt-2.5">
+          <span>Stored Weight:</span>
+          <span className="font-bold text-slate-200">{balanceWeight.toFixed(2)} Tons</span>
         </div>
       </div>
 
-      {/* Dynamic Issues Released Qty Card */}
-      <div 
-        id="stats-total-released"
-        className="galaxy-glass rounded-2xl p-5 shadow-lg transition-all hover:scale-[1.02] hover:border-violet-500/20 flex flex-col justify-between"
-      >
-        <div className="flex justify-between items-start">
-          <div>
-            <span className="text-[11px] font-extrabold uppercase tracking-wider text-slate-400">Total Released Units</span>
-            <h3 className="text-3xl font-black font-sans text-white mt-1.5 neon-text-sky">{totalReleasedCount}</h3>
+      {/* Defects / Rejects */}
+      <div className={`backdrop-blur-md bg-slate-900/60 p-5 rounded-2xl shadow-xl transition-all hover:translate-y-[-2px] border ${totalIssueCount > 0 ? 'border-rose-500/30' : 'border-slate-800'}`}>
+        <div className="flex justify-between items-start mb-3">
+          <div className={`p-2.5 rounded-xl border ${totalIssueCount > 0 ? 'bg-rose-500/10 text-rose-400 border-rose-500/20' : 'bg-slate-800 text-slate-400 border-slate-700/50'}`}>
+            <AlertTriangle className="h-5 w-5" />
           </div>
-          <div className="p-3 bg-violet-500/10 text-violet-400 rounded-xl border border-violet-500/25 glow-purple">
-            <ArrowUpRight size={18} />
-          </div>
+          <span className={`text-[10px] uppercase font-bold px-2.5 py-1 rounded-full border ${totalIssueCount > 0 ? 'bg-rose-500/10 text-rose-400 border-rose-500/20' : 'bg-slate-800 text-slate-400 border-slate-700/50'}`}>
+            Quality Concerns
+          </span>
         </div>
-        <div className="text-[11px] text-slate-400 mt-4 border-t border-white/5 pt-2 flex items-center gap-1.5">
-          <span className="font-extrabold text-violet-400">{issues.length} issuances</span> executed
+        <p className="text-xs font-semibold text-slate-400 uppercase tracking-widest">Damaged/Rejected</p>
+        <div className="mt-1 flex items-baseline gap-1">
+          <span className={`text-4xl font-black tracking-tight drop-shadow-[0_0_12px_rgba(244,63,94,0.2)] ${totalIssueCount > 0 ? 'text-rose-400' : 'text-slate-300'}`}>
+            {totalIssueCount}
+          </span>
+          <span className="text-sm text-slate-400 font-bold">PCS</span>
         </div>
-      </div>
-
-      {/* Total Damaged Stock Card */}
-      <div 
-        id="stats-total-damaged"
-        onClick={onDamagedStockClick}
-        className={`galaxy-glass rounded-2xl p-5 shadow-lg transition-all hover:scale-[1.04] active:scale-95 flex flex-col justify-between border cursor-pointer select-none ${
-          totalDamagedUnits > 0 
-            ? 'border-amber-500/60 shadow-amber-500/10 shadow-lg hover:border-amber-400 bg-amber-500/[0.02]' 
-            : 'border-white/5 hover:border-white/10'
-        }`}
-        title="Click to view/filter damaged items"
-      >
-        <div className="flex justify-between items-start">
-          <div>
-            <span className="text-[11px] font-extrabold uppercase tracking-wider text-slate-400">Total Damaged Stock</span>
-            <h3 className={`text-3xl font-black font-sans mt-1.5 ${totalDamagedUnits > 0 ? 'text-amber-400 neon-text-orange' : 'text-slate-300'}`}>
-              {totalDamagedUnits}
-            </h3>
-          </div>
-          <div className={`p-3 rounded-xl border ${totalDamagedUnits > 0 ? 'bg-amber-500/10 text-amber-400 border-amber-500/25 glow-orange' : 'bg-slate-500/5 text-slate-500 border-white/5'}`}>
-            <Trash2 size={18} />
-          </div>
-        </div>
-        <div className="text-[11px] text-slate-400 mt-4 border-t border-white/5 pt-2 flex justify-between items-center">
-          <div className="flex items-center gap-1.5">
-            {totalDamagedUnits > 0 ? (
-              <span className="font-extrabold text-amber-400">Excluded</span>
-            ) : (
-              <span className="font-extrabold text-slate-500">No damage</span>
-            )}
-            <span>from active inventory</span>
-          </div>
-          {totalDamagedUnits > 0 && (
-            <span className="text-[9px] text-amber-500/80 font-bold tracking-wider uppercase border border-amber-500/20 px-1 py-0.5 rounded bg-amber-500/5">Click to View</span>
-          )}
-        </div>
-      </div>
-
-      {/* Total Rejected Stock Card */}
-      <div 
-        id="stats-total-rejected"
-        onClick={onRejectedStockClick}
-        className={`galaxy-glass rounded-2xl p-5 shadow-lg transition-all hover:scale-[1.04] active:scale-95 flex flex-col justify-between border cursor-pointer select-none ${
-          totalRejectedUnits > 0 
-            ? 'border-rose-500/60 shadow-rose-500/10 shadow-lg hover:border-rose-400 bg-rose-500/[0.02]' 
-            : 'border-white/5 hover:border-white/10'
-        }`}
-        title="Click to view/filter rejected items"
-      >
-        <div className="flex justify-between items-start">
-          <div>
-            <span className="text-[11px] font-extrabold uppercase tracking-wider text-slate-400">Total Rejected Stock</span>
-            <h3 className={`text-3xl font-black font-sans mt-1.5 ${totalRejectedUnits > 0 ? 'text-rose-400 neon-text-red' : 'text-slate-300'}`}>
-              {totalRejectedUnits}
-            </h3>
-          </div>
-          <div className={`p-3 rounded-xl border ${totalRejectedUnits > 0 ? 'bg-rose-500/10 text-rose-400 border-rose-500/25 glow-rose' : 'bg-slate-500/5 text-slate-500 border-white/5'}`}>
-            <Ban size={18} />
-          </div>
-        </div>
-        <div className="text-[11px] text-slate-400 mt-4 border-t border-white/5 pt-2 flex justify-between items-center">
-          <div className="flex items-center gap-1.5">
-            {totalRejectedUnits > 0 ? (
-              <span className="font-extrabold text-rose-400">Deducted</span>
-            ) : (
-              <span className="font-extrabold text-slate-500">Zero rejected</span>
-            )}
-            <span>parts on entry</span>
-          </div>
-          {totalRejectedUnits > 0 && (
-            <span className="text-[9px] text-rose-500/80 font-bold tracking-wider uppercase border border-rose-500/20 px-1 py-0.5 rounded bg-rose-500/5">Click to View</span>
-          )}
-        </div>
-      </div>
-
-      {/* Total Expired Stock Card */}
-      <div 
-        id="stats-total-expired"
-        onClick={onExpiredStockClick}
-        className={`galaxy-glass rounded-2xl p-5 shadow-lg transition-all hover:scale-[1.04] active:scale-95 flex flex-col justify-between border cursor-pointer select-none ${
-          totalExpiredUnits > 0 
-            ? 'border-red-500/60 shadow-red-500/10 shadow-lg hover:border-red-400 bg-red-500/[0.02]' 
-            : 'border-white/5 hover:border-white/10'
-        }`}
-        title="Click to view/filter expired items"
-      >
-        <div className="flex justify-between items-start">
-          <div>
-            <span className="text-[11px] font-extrabold uppercase tracking-wider text-slate-400">Total Expired Stock</span>
-            <h3 className={`text-3xl font-black font-sans mt-1.5 ${totalExpiredUnits > 0 ? 'text-red-400 neon-text-red' : 'text-slate-300'}`}>
-              {totalExpiredUnits}
-            </h3>
-          </div>
-          <div className={`p-3 rounded-xl border ${totalExpiredUnits > 0 ? 'bg-red-500/10 text-red-400 border-red-500/25 glow-red' : 'bg-slate-500/5 text-slate-500 border-white/5'}`}>
-            <CalendarRange size={18} />
-          </div>
-        </div>
-        <div className="text-[11px] text-slate-400 mt-4 border-t border-white/5 pt-2 flex justify-between items-center">
-          <div className="flex items-center gap-1.5">
-            {totalExpiredUnits > 0 ? (
-              <span className="font-extrabold text-red-400">Expired</span>
-            ) : (
-              <span className="font-extrabold text-slate-500">Safe/Fresh</span>
-            )}
-            <span>shelf life stock</span>
-          </div>
-          {totalExpiredUnits > 0 && (
-            <span className="text-[9px] text-red-500/80 font-bold tracking-wider uppercase border border-red-500/20 px-1 py-0.5 rounded bg-red-500/5">Click to View</span>
-          )}
+        <div className="mt-3 text-[10px] text-slate-400 flex justify-between border-t border-slate-800/60 pt-2.5 gap-1.5 flex-wrap">
+          <span className="text-amber-400/90">Minor: {damagedReceived + damagedErected}</span>
+          <span className="text-rose-400/90">Rejected: {rejectedReceived + rejectedErected}</span>
         </div>
       </div>
     </div>
