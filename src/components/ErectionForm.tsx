@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { Plus, Trash2, Loader2, Save, Sparkles, CheckCircle2, AlertTriangle, X } from "lucide-react";
 import { Site, Erection, ElementStatus } from "../types";
-import { db, collection, addDoc, handleFirestoreError, OperationType } from "../lib/firebase";
+import { db, collection, doc, setDoc, handleFirestoreError, OperationType } from "../lib/firebase";
 import { saveSuggestion } from "../lib/suggestions";
 import CustomCombobox from "./CustomCombobox";
 
@@ -150,7 +150,7 @@ export default function ErectionForm({
         createdAt: new Date().toISOString()
       };
 
-      await addDoc(collection(db, "sites"), sitePayload);
+      await setDoc(doc(db, "sites", sitePayload.id), sitePayload);
       
       // Auto select newly created site
       onSelectSite(sitePayload);
@@ -245,7 +245,7 @@ export default function ErectionForm({
         };
 
         // Write to Firestore
-        await addDoc(collection(db, "erections"), erectionPayload);
+        await setDoc(doc(db, "erections", erectionPayload.id), erectionPayload);
 
         // Save autocompleting suggestions
         await saveSuggestion("elementCode", item.elementCode);

@@ -42,7 +42,11 @@ export default function App() {
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const loadedSites: Site[] = [];
       snapshot.forEach((doc) => {
-        loadedSites.push(doc.data() as Site);
+        const item = doc.data() as Site;
+        loadedSites.push({
+          ...item,
+          id: doc.id
+        });
       });
       setSites(loadedSites);
       setLoadingSites(false);
@@ -73,7 +77,10 @@ export default function App() {
       snapshot.forEach((doc) => {
         const item = doc.data() as Delivery;
         if (item.siteId === selectedSite.id) {
-          loaded.push(item);
+          loaded.push({
+            ...item,
+            id: doc.id
+          });
         }
       });
       setDeliveries(loaded);
@@ -87,7 +94,10 @@ export default function App() {
       snapshot.forEach((doc) => {
         const item = doc.data() as Erection;
         if (item.siteId === selectedSite.id) {
-          loaded.push(item);
+          loaded.push({
+            ...item,
+            id: doc.id
+          });
         }
       });
       setErections(loaded);

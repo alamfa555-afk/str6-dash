@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { Plus, Trash2, Loader2, Save, Sparkles, Send, CheckCircle2, AlertTriangle, X } from "lucide-react";
 import { Site, Delivery, ElementStatus } from "../types";
-import { db, collection, addDoc, handleFirestoreError, OperationType } from "../lib/firebase";
+import { db, collection, doc, setDoc, handleFirestoreError, OperationType } from "../lib/firebase";
 import { saveSuggestion } from "../lib/suggestions";
 import CustomCombobox from "./CustomCombobox";
 
@@ -154,7 +154,7 @@ export default function DeliveryForm({
         createdAt: new Date().toISOString()
       };
 
-      await addDoc(collection(db, "sites"), sitePayload);
+      await setDoc(doc(db, "sites", sitePayload.id), sitePayload);
       
       // Auto select newly created site
       onSelectSite(sitePayload);
@@ -259,7 +259,7 @@ export default function DeliveryForm({
         };
 
         // Write to Firestore
-        await addDoc(collection(db, "deliveries"), deliveryPayload);
+        await setDoc(doc(db, "deliveries", deliveryPayload.id), deliveryPayload);
 
         // Save autocompleting suggestions
         await saveSuggestion("elementCode", item.elementCode);
